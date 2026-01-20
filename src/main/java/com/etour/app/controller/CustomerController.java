@@ -1,0 +1,80 @@
+package com.etour.app.controller;
+
+import com.etour.app.entity.CustomerMaster;
+import com.etour.app.service.CustomerService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/customers")
+@CrossOrigin(origins = "*")
+public class CustomerController {
+    
+    @Autowired
+    private CustomerService customerService;
+    
+    @PostMapping("/register")
+    public ResponseEntity<CustomerMaster> registerCustomer(@RequestBody CustomerMaster customer) {
+        CustomerMaster savedCustomer = customerService.registerCustomer(customer);
+        return new ResponseEntity<>(savedCustomer, HttpStatus.CREATED);
+    }
+    
+    @GetMapping
+    public List<CustomerMaster> getAllCustomers() {
+        return customerService.getAllCustomers();
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<CustomerMaster> getCustomerById(@PathVariable Integer id) {
+        try {
+            CustomerMaster customer = customerService.getCustomerById(id);
+            return new ResponseEntity<>(customer, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<CustomerMaster> updateCustomer(@PathVariable Integer id, @RequestBody CustomerMaster customer) {
+        try {
+            CustomerMaster updatedCustomer = customerService.updateCustomer(id, customer);
+            return new ResponseEntity<>(updatedCustomer, HttpStatus.OK);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteCustomer(@PathVariable Integer id) {
+        try {
+            customerService.deleteCustomer(id);
+            return new ResponseEntity<>("Customer deleted successfully", HttpStatus.OK);
+        } catch (DataIntegrityViolationException e) {
+            return new ResponseEntity<>(
+                "Cannot delete customer. Customer has associated bookings or data.", 
+                HttpStatus.CONFLICT
+            );
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>("Customer not found with ID: " + id, HttpStatus.NOT_FOUND);
+        } catch (Exception e) {
+            return new ResponseEntity<>(
+                "Error deleting customer: " + e.getMessage(), 
+                HttpStatus.INTERNAL_SERVER_ERROR
+            );
+        }
+    }
+    
+    @PostMapping("/login")
+    public ResponseEntity<?> loginCustomer(@RequestBody CustomerMaster loginDetails) {
+        CustomerMaster customer = customerService.loginCustomer(loginDetails.getEmail(), loginDetails.getPassword());
+        if (customer != null) {
+            return new ResponseEntity<>(customer, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>("Invalid email or password", HttpStatus.UNAUTHORIZED);
+        }
+    }
+}
