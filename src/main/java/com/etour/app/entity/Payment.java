@@ -1,4 +1,4 @@
-package com.example.demo.Entities;
+package com.etour.app.entity;
 
 import jakarta.persistence.*;
 

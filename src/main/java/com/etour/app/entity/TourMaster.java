@@ -1,9 +1,6 @@
-package com.example.demo.Entities;
+package com.etour.app.entity;
 
 import jakarta.persistence.*;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "tour_master")
@@ -23,12 +20,6 @@ public class TourMaster {
 
     @Column(name = "description", length = 500)
     private String description;
-
-    @OneToMany(mappedBy = "tour")
-    private Set<BookingHeader> bookingHeaders = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "tour")
-    private Set<TourAddonMaster> tourAddonMasters = new LinkedHashSet<>();
 
     public Integer getId() {
         return id;
@@ -60,22 +51,6 @@ public class TourMaster {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    public Set<BookingHeader> getBookingHeaders() {
-        return bookingHeaders;
-    }
-
-    public void setBookingHeaders(Set<BookingHeader> bookingHeaders) {
-        this.bookingHeaders = bookingHeaders;
-    }
-
-    public Set<TourAddonMaster> getTourAddonMasters() {
-        return tourAddonMasters;
-    }
-
-    public void setTourAddonMasters(Set<TourAddonMaster> tourAddonMasters) {
-        this.tourAddonMasters = tourAddonMasters;
     }
 
 }

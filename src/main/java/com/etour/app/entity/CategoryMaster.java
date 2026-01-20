@@ -1,9 +1,6 @@
-package com.example.demo.Entities;
+package com.etour.app.entity;
 
 import jakarta.persistence.*;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "category_master")
@@ -27,18 +24,6 @@ public class CategoryMaster {
 
     @Column(name = "flag", nullable = false)
     private Boolean flag;
-
-    @OneToMany(mappedBy = "catmaster")
-    private Set<CostMaster> costMasters = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "catmaster")
-    private Set<DepartureDateMaster> departureDateMasters = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "catmaster")
-    private Set<ItineraryMaster> itineraryMasters = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "catmaster")
-    private Set<TourMaster> tourMasters = new LinkedHashSet<>();
 
     public Integer getId() {
         return id;
@@ -86,38 +71,6 @@ public class CategoryMaster {
 
     public void setFlag(Boolean flag) {
         this.flag = flag;
-    }
-
-    public Set<CostMaster> getCostMasters() {
-        return costMasters;
-    }
-
-    public void setCostMasters(Set<CostMaster> costMasters) {
-        this.costMasters = costMasters;
-    }
-
-    public Set<DepartureDateMaster> getDepartureDateMasters() {
-        return departureDateMasters;
-    }
-
-    public void setDepartureDateMasters(Set<DepartureDateMaster> departureDateMasters) {
-        this.departureDateMasters = departureDateMasters;
-    }
-
-    public Set<ItineraryMaster> getItineraryMasters() {
-        return itineraryMasters;
-    }
-
-    public void setItineraryMasters(Set<ItineraryMaster> itineraryMasters) {
-        this.itineraryMasters = itineraryMasters;
-    }
-
-    public Set<TourMaster> getTourMasters() {
-        return tourMasters;
-    }
-
-    public void setTourMasters(Set<TourMaster> tourMasters) {
-        this.tourMasters = tourMasters;
     }
 
 }

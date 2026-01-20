@@ -1,10 +1,8 @@
-package com.example.demo.Entities;
+package com.etour.app.entity;
 
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "departure_date_master")
@@ -26,12 +24,6 @@ public class DepartureDateMaster {
 
     @Column(name = "number_of_days", nullable = false)
     private Integer numberOfDays;
-
-    @OneToMany(mappedBy = "departureDate")
-    private Set<BookingHeader> bookingHeaders = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "departureDate")
-    private Set<TourMaster> tourMasters = new LinkedHashSet<>();
 
     public Integer getId() {
         return id;
@@ -71,22 +63,6 @@ public class DepartureDateMaster {
 
     public void setNumberOfDays(Integer numberOfDays) {
         this.numberOfDays = numberOfDays;
-    }
-
-    public Set<BookingHeader> getBookingHeaders() {
-        return bookingHeaders;
-    }
-
-    public void setBookingHeaders(Set<BookingHeader> bookingHeaders) {
-        this.bookingHeaders = bookingHeaders;
-    }
-
-    public Set<TourMaster> getTourMasters() {
-        return tourMasters;
-    }
-
-    public void setTourMasters(Set<TourMaster> tourMasters) {
-        this.tourMasters = tourMasters;
     }
 
 }

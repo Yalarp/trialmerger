@@ -1,11 +1,9 @@
-package com.example.demo.Entities;
+package com.etour.app.entity;
 
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
 @Table(name = "booking_header")
@@ -41,15 +39,6 @@ public class BookingHeader {
 
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
-
-    @OneToMany(mappedBy = "booking")
-    private Set<BookingAddonMaster> bookingAddonMasters = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "booking")
-    private Set<PassengerMaster> passengerMasters = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "booking")
-    private Set<Payment> payments = new LinkedHashSet<>();
 
     public Integer getId() {
         return id;
@@ -121,30 +110,6 @@ public class BookingHeader {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
-    }
-
-    public Set<BookingAddonMaster> getBookingAddonMasters() {
-        return bookingAddonMasters;
-    }
-
-    public void setBookingAddonMasters(Set<BookingAddonMaster> bookingAddonMasters) {
-        this.bookingAddonMasters = bookingAddonMasters;
-    }
-
-    public Set<PassengerMaster> getPassengerMasters() {
-        return passengerMasters;
-    }
-
-    public void setPassengerMasters(Set<PassengerMaster> passengerMasters) {
-        this.passengerMasters = passengerMasters;
-    }
-
-    public Set<Payment> getPayments() {
-        return payments;
-    }
-
-    public void setPayments(Set<Payment> payments) {
-        this.payments = payments;
     }
 
 }
