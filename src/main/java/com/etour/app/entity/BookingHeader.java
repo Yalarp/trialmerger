@@ -40,6 +40,9 @@ public class BookingHeader {
     @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "booking_status", nullable = false, length = 20)
+    private String bookingStatus = "PENDING";
+
     public Integer getId() {
         return id;
     }
@@ -110,6 +113,14 @@ public class BookingHeader {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public String getBookingStatus() {
+        return bookingStatus;
+    }
+
+    public void setBookingStatus(String bookingStatus) {
+        this.bookingStatus = bookingStatus;
     }
 
 }

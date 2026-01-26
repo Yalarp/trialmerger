@@ -1,52 +1,20 @@
-package com.etour.app.entity;
-
-import jakarta.persistence.*;
+package com.etour.app.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
-@Entity
-@Table(name = "payment")
-public class Payment {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "payment_id", nullable = false)
+public class PaymentDTO {
+
     private Integer id;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "booking_id", nullable = false)
-    private BookingHeader booking;
-
-    @Column(name = "transaction_id", nullable = false)
+    private Integer bookingId;
     private String transactionId;
-
-    @Column(name = "payment_date", nullable = false)
-    private Instant paymentDate;
-
-    @Column(name = "payment_mode", nullable = false, length = 50)
     private String paymentMode;
-
-    @Column(name = "payment_status", nullable = false, length = 50)
     private String paymentStatus;
-
-    @Column(name = "paid_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal paidAmount;
-
-    @Column(name = "razorpay_order_id")
+    private Instant paymentDate;
     private String razorpayOrderId;
-
-    @Column(name = "razorpay_payment_id")
     private String razorpayPaymentId;
-
-    @Column(name = "razorpay_signature")
     private String razorpaySignature;
-    
-    @PrePersist
-    public void prePersist() {
-        if (this.paymentDate == null) {
-            this.paymentDate = Instant.now();
-        }
-    }
 
     public Integer getId() {
         return id;
@@ -56,12 +24,12 @@ public class Payment {
         this.id = id;
     }
 
-    public BookingHeader getBooking() {
-        return booking;
+    public Integer getBookingId() {
+        return bookingId;
     }
 
-    public void setBooking(BookingHeader booking) {
-        this.booking = booking;
+    public void setBookingId(Integer bookingId) {
+        this.bookingId = bookingId;
     }
 
     public String getTransactionId() {
@@ -70,14 +38,6 @@ public class Payment {
 
     public void setTransactionId(String transactionId) {
         this.transactionId = transactionId;
-    }
-
-    public Instant getPaymentDate() {
-        return paymentDate;
-    }
-
-    public void setPaymentDate(Instant paymentDate) {
-        this.paymentDate = paymentDate;
     }
 
     public String getPaymentMode() {
@@ -104,6 +64,14 @@ public class Payment {
         this.paidAmount = paidAmount;
     }
 
+    public Instant getPaymentDate() {
+        return paymentDate;
+    }
+
+    public void setPaymentDate(Instant paymentDate) {
+        this.paymentDate = paymentDate;
+    }
+
     public String getRazorpayOrderId() {
         return razorpayOrderId;
     }
@@ -127,5 +95,5 @@ public class Payment {
     public void setRazorpaySignature(String razorpaySignature) {
         this.razorpaySignature = razorpaySignature;
     }
-
 }
+

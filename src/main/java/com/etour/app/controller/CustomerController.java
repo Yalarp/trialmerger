@@ -1,5 +1,6 @@
 package com.etour.app.controller;
 
+import com.etour.app.dto.CustomerDTO;
 import com.etour.app.entity.CustomerMaster;
 import com.etour.app.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -18,31 +20,34 @@ public class CustomerController {
     private CustomerService customerService;
     
     @PostMapping("/register")
-    public ResponseEntity<CustomerMaster> registerCustomer(@RequestBody CustomerMaster customer) {
+    public ResponseEntity<CustomerDTO> registerCustomer(@RequestBody CustomerMaster customer) {
         CustomerMaster savedCustomer = customerService.registerCustomer(customer);
-        return new ResponseEntity<>(savedCustomer, HttpStatus.CREATED);
+        return new ResponseEntity<>(new CustomerDTO(savedCustomer), HttpStatus.CREATED);
     }
     
     @GetMapping
-    public List<CustomerMaster> getAllCustomers() {
-        return customerService.getAllCustomers();
+    public List<CustomerDTO> getAllCustomers() {
+        return customerService.getAllCustomers()
+                .stream()
+                .map(CustomerDTO::new)
+                .collect(Collectors.toList());
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<CustomerMaster> getCustomerById(@PathVariable Integer id) {
+    public ResponseEntity<CustomerDTO> getCustomerById(@PathVariable Integer id) {
         try {
             CustomerMaster customer = customerService.getCustomerById(id);
-            return new ResponseEntity<>(customer, HttpStatus.OK);
+            return new ResponseEntity<>(new CustomerDTO(customer), HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<CustomerMaster> updateCustomer(@PathVariable Integer id, @RequestBody CustomerMaster customer) {
+    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable Integer id, @RequestBody CustomerMaster customer) {
         try {
             CustomerMaster updatedCustomer = customerService.updateCustomer(id, customer);
-            return new ResponseEntity<>(updatedCustomer, HttpStatus.OK);
+            return new ResponseEntity<>(new CustomerDTO(updatedCustomer), HttpStatus.OK);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
@@ -72,7 +77,8 @@ public class CustomerController {
     public ResponseEntity<?> loginCustomer(@RequestBody CustomerMaster loginDetails) {
         CustomerMaster customer = customerService.loginCustomer(loginDetails.getEmail(), loginDetails.getPassword());
         if (customer != null) {
-            return new ResponseEntity<>(customer, HttpStatus.OK);
+            // Return DTO to exclude password from response
+            return new ResponseEntity<>(new CustomerDTO(customer), HttpStatus.OK);
         } else {
             return new ResponseEntity<>("Invalid email or password", HttpStatus.UNAUTHORIZED);
         }

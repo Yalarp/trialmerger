@@ -4,6 +4,7 @@ import com.etour.app.entity.CustomerMaster;
 import com.etour.app.repository.CustomerRepository;
 import com.etour.app.service.CustomerService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -15,11 +16,16 @@ public class CustomerServiceImpl implements CustomerService {
     @Autowired
     private CustomerRepository customerRepository;
     
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
     @Override
     public CustomerMaster registerCustomer(CustomerMaster customer) {
         if (customerRepository.existsByEmail(customer.getEmail())) {
             throw new RuntimeException("Email already registered: " + customer.getEmail());
         }
+        // Hash the password before saving
+        customer.setPassword(passwordEncoder.encode(customer.getPassword()));
         return customerRepository.save(customer);
     }
     
@@ -45,8 +51,9 @@ public class CustomerServiceImpl implements CustomerService {
         existingCustomer.setCity(customerDetails.getCity());
         existingCustomer.setState(customerDetails.getState());
         
+        // Hash the new password if provided
         if (customerDetails.getPassword() != null && !customerDetails.getPassword().isEmpty()) {
-            existingCustomer.setPassword(customerDetails.getPassword());
+            existingCustomer.setPassword(passwordEncoder.encode(customerDetails.getPassword()));
         }
         return customerRepository.save(existingCustomer);
     }
@@ -65,7 +72,8 @@ public class CustomerServiceImpl implements CustomerService {
         Optional<CustomerMaster> customerOpt = customerRepository.findByEmail(email);
         if (customerOpt.isPresent()) {
             CustomerMaster customer = customerOpt.get();
-            if (customer.getPassword().equals(password)) {
+            // Fix NPE: Check if stored password is not null and matches using BCrypt
+            if (customer.getPassword() != null && passwordEncoder.matches(password, customer.getPassword())) {
                 return customer;
             }
         }
