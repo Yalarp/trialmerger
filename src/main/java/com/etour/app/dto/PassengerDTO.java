@@ -4,20 +4,22 @@ import java.time.LocalDate;
 
 public class PassengerDTO {
 
-    private String passengerName;
-    private LocalDate dateOfBirth;
+	private String name;
+	private LocalDate dob;
+
 	public String getPassengerName() {
-		return passengerName;
-	}
-	public void setPassengerName(String passengerName) {
-		this.passengerName = passengerName;
-	}
-	public LocalDate getDateOfBirth() {
-		return dateOfBirth;
-	}
-	public void setDateOfBirth(LocalDate dateOfBirth) {
-		this.dateOfBirth = dateOfBirth;
+		return name;
 	}
 
-    // getters setters
+	public void setPassengerName(String name) {
+		this.name = name;
+	}
+
+	public LocalDate getDateOfBirth() {
+		return dob;
+	}
+
+	public void setDateOfBirth(LocalDate dob) {
+		this.dob = dob;
+	}
 }

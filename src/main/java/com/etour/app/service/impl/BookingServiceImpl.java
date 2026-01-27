@@ -46,16 +46,50 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingHeader createBooking(BookingRequestDTO dto) {
 
+        System.out.println("DEBUG: Processing Booking Request");
+        System.out.println("DEBUG: Customer ID: " + dto.getCustomerId());
+        System.out.println("DEBUG: Tour ID: " + dto.getTourId());
+        System.out.println("DEBUG: DepartureDate ID: " + dto.getDepartureDateId());
+        if (dto.getPassengers() != null) {
+            System.out.println("DEBUG: Passenger Count: " + dto.getPassengers().size());
+            dto.getPassengers().forEach(p -> System.out
+                    .println("DEBUG: Passenger: " + p.getPassengerName() + " DOB: " + p.getDateOfBirth()));
+        } else {
+            System.out.println("DEBUG: Passengers list is NULL");
+        }
+
         // ---------------- FETCH MASTER DATA ----------------
 
-        CustomerMaster customer =
-                customerRepo.findById(dto.getCustomerId()).get();
+        if (dto.getCustomerId() == null) {
+            throw new RuntimeException("Customer ID is missing in request");
+        }
+        CustomerMaster customer = customerRepo.findById(dto.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Customer not found with ID: " + dto.getCustomerId()));
 
-        TourMaster tour =
-                tourRepo.findById(dto.getTourId()).get();
+        TourMaster tour = null;
+        if (dto.getTourId() != null) {
+            tour = tourRepo.findById(dto.getTourId()).orElse(null);
+        }
 
-        DepartureDateMaster departure =
-                departureRepo.findById(dto.getDepartureDateId()).get();
+        if (tour == null && dto.getDepartureDateId() != null) {
+            // Fallback: If tourId is null, try to find the tour linked to this departure
+            // date
+            System.out.println("DEBUG: tourId is null, attempting fallback lookup via departureDateId: "
+                    + dto.getDepartureDateId());
+            tour = tourRepo.findAll().stream()
+                    .filter(t -> t.getDepartureDate() != null
+                            && t.getDepartureDate().getId().equals(dto.getDepartureDateId()))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (tour == null) {
+            throw new RuntimeException("Tour not found (Neither via tourId nor departureDateId)");
+        }
+
+        DepartureDateMaster departure = departureRepo.findById(dto.getDepartureDateId())
+                .orElseThrow(
+                        () -> new RuntimeException("Departure Date not found with ID: " + dto.getDepartureDateId()));
 
         // ---------------- FETCH COST ----------------
 
@@ -80,17 +114,14 @@ public class BookingServiceImpl implements BookingService {
 
         // ---------------- ROOM PRICE CALCULATION ----------------
 
-        BigDecimal tourAmount =
-                calculateRoomAmount(
-                        totalPassengers,
-                        dto.getRoomPreference(),
-                        cost);
+        BigDecimal tourAmount = calculateRoomAmount(
+                totalPassengers,
+                dto.getRoomPreference(),
+                cost);
 
-        BigDecimal taxAmount =
-                tourAmount.multiply(new BigDecimal("0.05"));
+        BigDecimal taxAmount = tourAmount.multiply(new BigDecimal("0.05"));
 
-        BigDecimal totalAmount =
-                tourAmount.add(taxAmount);
+        BigDecimal totalAmount = tourAmount.add(taxAmount);
 
         // ---------------- SAVE BOOKING HEADER ----------------
 
@@ -107,17 +138,15 @@ public class BookingServiceImpl implements BookingService {
         booking.setTotalAmount(totalAmount);
         booking.setBookingStatus("PENDING");
 
-        BookingHeader savedBooking =
-                bookingRepo.save(booking);
+        BookingHeader savedBooking = bookingRepo.save(booking);
 
         // ---------------- SAVE PASSENGERS ----------------
 
         // FIXED BigDecimal Division (NO ERROR NOW)
-        BigDecimal perPassengerAmount =
-                tourAmount.divide(
-                        new BigDecimal(totalPassengers),
-                        2,
-                        RoundingMode.HALF_UP);
+        BigDecimal perPassengerAmount = tourAmount.divide(
+                new BigDecimal(totalPassengers),
+                2,
+                RoundingMode.HALF_UP);
 
         for (PassengerDTO p : dto.getPassengers()) {
 
@@ -126,6 +155,8 @@ public class BookingServiceImpl implements BookingService {
             passenger.setBooking(savedBooking);
             passenger.setPassengerName(p.getPassengerName());
             passenger.setDateOfBirth(p.getDateOfBirth());
+            // passenger.setPassengerName("TEST");
+            // passenger.setDateOfBirth(java.time.LocalDate.now());
 
             passenger.setPassengerType("ADULT");
             passenger.setPassengerAmount(perPassengerAmount);
@@ -154,9 +185,8 @@ public class BookingServiceImpl implements BookingService {
 
             int twinRooms = paxCount / 2;
 
-            totalAmount =
-                    cost.getBaseCost()
-                            .multiply(new BigDecimal(twinRooms));
+            totalAmount = cost.getBaseCost()
+                    .multiply(new BigDecimal(twinRooms));
 
             return totalAmount;
         }
@@ -173,15 +203,12 @@ public class BookingServiceImpl implements BookingService {
                 int remaining = paxCount - 1;
                 int twinRooms = remaining / 2;
 
-                BigDecimal twinAmount =
-                        cost.getBaseCost()
-                                .multiply(new BigDecimal(twinRooms));
+                BigDecimal twinAmount = cost.getBaseCost()
+                        .multiply(new BigDecimal(twinRooms));
 
-                BigDecimal singleAmount =
-                        cost.getSinglePersonCost();
+                BigDecimal singleAmount = cost.getSinglePersonCost();
 
-                totalAmount =
-                        twinAmount.add(singleAmount);
+                totalAmount = twinAmount.add(singleAmount);
 
                 return totalAmount;
             }
@@ -190,12 +217,10 @@ public class BookingServiceImpl implements BookingService {
 
             if (preference.equalsIgnoreCase("ALL_TWIN_RANDOM")) {
 
-                int twinRooms =
-                        (paxCount + 1) / 2;
+                int twinRooms = (paxCount + 1) / 2;
 
-                totalAmount =
-                        cost.getBaseCost()
-                                .multiply(new BigDecimal(twinRooms));
+                totalAmount = cost.getBaseCost()
+                        .multiply(new BigDecimal(twinRooms));
 
                 return totalAmount;
             }
@@ -251,7 +276,7 @@ public class BookingServiceImpl implements BookingService {
 
     private BookingResponseDTO toDTO(BookingHeader booking) {
         BookingResponseDTO dto = new BookingResponseDTO();
-        
+
         // Basic booking info
         dto.setId(booking.getId());
         dto.setBookingDate(booking.getBookingDate());
@@ -260,7 +285,7 @@ public class BookingServiceImpl implements BookingService {
         dto.setTourAmount(booking.getTourAmount());
         dto.setTaxAmount(booking.getTaxAmount());
         dto.setTotalAmount(booking.getTotalAmount());
-        
+
         // Customer info
         if (booking.getCustomer() != null) {
             dto.setCustomerId(booking.getCustomer().getId());
@@ -268,7 +293,7 @@ public class BookingServiceImpl implements BookingService {
             dto.setCustomerEmail(booking.getCustomer().getEmail());
             dto.setCustomerMobile(booking.getCustomer().getMobileNumber());
         }
-        
+
         // Tour info
         if (booking.getTour() != null) {
             dto.setTourId(booking.getTour().getId());
@@ -277,7 +302,7 @@ public class BookingServiceImpl implements BookingService {
                 dto.setTourCategoryName(booking.getTour().getCatmaster().getName());
             }
         }
-        
+
         // Departure date info
         if (booking.getDepartureDate() != null) {
             dto.setDepartureDateId(booking.getDepartureDate().getId());
@@ -285,7 +310,7 @@ public class BookingServiceImpl implements BookingService {
             dto.setEndDate(booking.getDepartureDate().getEndDate());
             dto.setNumberOfDays(booking.getDepartureDate().getNumberOfDays());
         }
-        
+
         return dto;
     }
 }

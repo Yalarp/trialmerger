@@ -5,8 +5,13 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.etour.app.dto.PaymentDTO;
+import com.etour.app.email.service.EmailService;
+import com.etour.app.email.util.EmailTemplateUtil;
 import com.etour.app.entity.BookingHeader;
 import com.etour.app.entity.Payment;
+import com.etour.app.invoice.dto.InvoiceResponseDTO;
+import com.etour.app.invoice.service.InvoiceService;
+import com.etour.app.invoice.util.InvoicePdfGenerator;
 import com.etour.app.repository.BookingHeaderRepository;
 import com.etour.app.repository.PaymentRepository;
 import com.etour.app.service.PaymentService;
@@ -16,11 +21,16 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepo;
     private final BookingHeaderRepository bookingRepository;
+    private final InvoiceService invoiceService;
+    private final EmailService emailService;
 
     public PaymentServiceImpl(PaymentRepository paymentRepo,
-                              BookingHeaderRepository bookingRepository) {
+                              BookingHeaderRepository bookingRepository,InvoiceService invoiceService,
+                              EmailService emailService) {
         this.paymentRepo = paymentRepo;
         this.bookingRepository = bookingRepository;
+        this.invoiceService = invoiceService;
+        this.emailService = emailService;
     }
 
     // ================= ADD PAYMENT =================
@@ -121,29 +131,72 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         // ========== CREATE PAYMENT ==========
-        Payment p = new Payment();
-        p.setBooking(booking);
-        p.setTransactionId(dto.getTransactionId());
-        p.setPaymentMode(dto.getPaymentMode());
-        p.setPaymentStatus(dto.getPaymentStatus());
-        p.setPaidAmount(dto.getPaidAmount());
-        p.setRazorpayOrderId(dto.getRazorpayOrderId());
-        p.setRazorpayPaymentId(dto.getRazorpayPaymentId());
-        p.setRazorpaySignature(dto.getRazorpaySignature());
+        Payment payment = new Payment();
+        payment.setBooking(booking);
+        payment.setTransactionId(dto.getTransactionId());
+        payment.setPaymentMode(dto.getPaymentMode());
+        payment.setPaymentStatus(dto.getPaymentStatus());
+        payment.setPaidAmount(dto.getPaidAmount());
+        payment.setRazorpayOrderId(dto.getRazorpayOrderId());
+        payment.setRazorpayPaymentId(dto.getRazorpayPaymentId());
+        payment.setRazorpaySignature(dto.getRazorpaySignature());
 
-        Payment saved = paymentRepo.save(p);
+        Payment savedPayment = paymentRepo.save(payment);
 
         // ========== UPDATE BOOKING STATUS ==========
         // Only update to CONFIRMED if payment is SUCCESS and booking is currently PENDING
         // This ensures:
         // 1. Failed payments don't change booking status
         // 2. Already confirmed bookings don't get updated unnecessarily
-        if ("SUCCESS".equalsIgnoreCase(dto.getPaymentStatus()) && !isAlreadyConfirmed) {
+        boolean bookingJustConfirmed = false;
+
+        if ("SUCCESS".equalsIgnoreCase(dto.getPaymentStatus())
+                && !isAlreadyConfirmed) {
+
             booking.setBookingStatus("CONFIRMED");
             bookingRepository.save(booking);
+            bookingJustConfirmed = true;
         }
 
-        return toDTO(saved);
+        // ========== SEND INVOICE EMAIL (ONLY ON SUCCESS) ==========
+        /*
+         WHY HERE?
+         - Payment SUCCESS is the source of truth
+         - Booking is already CONFIRMED
+         - Invoice generation is guaranteed to succeed
+         - Prevents duplicate emails
+        */
+        if (bookingJustConfirmed) {
+            try {
+                // 1️⃣ Generate Invoice DTO
+                InvoiceResponseDTO invoice =
+                        invoiceService.generateInvoice(booking.getId().longValue());
+
+                // 2️⃣ Generate Invoice PDF
+                byte[] pdfBytes =
+                        InvoicePdfGenerator.generateInvoicePdf(invoice);
+
+                // 3️⃣ Send Email via SendGrid
+                String customerEmail = invoice.getCustomer().getEmail();
+                
+                emailService.sendInvoiceEmail(
+                        customerEmail,
+                        "Your E-Tour India Invoice – Booking #" + booking.getId(),
+                        EmailTemplateUtil.invoiceEmailBody(
+                                invoice.getCustomer().getName(),
+                                booking.getId().longValue()
+                        ),
+                        pdfBytes,
+                        "ETour-Invoice-" + booking.getId() + ".pdf"
+                );
+                
+            } catch (Exception e) {
+                // Email failure should not affect payment confirmation
+                e.printStackTrace();
+            }
+        }
+
+        return toDTO(savedPayment);
     }
 
     // ================= GET BY ID =================
