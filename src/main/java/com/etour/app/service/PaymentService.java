@@ -17,4 +17,6 @@ public interface PaymentService {
     PaymentDTO getPaymentByTransactionId(String transactionId);
 
     void deletePayment(Integer id);
+
+    List<PaymentDTO> getAllPayments();
 }

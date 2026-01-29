@@ -7,330 +7,194 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const PaymentSuccess = () => {
+
   const { bookingId } = useParams();
   const navigate = useNavigate();
 
   const [booking, setBooking] = useState(null);
   const [passengers, setPassengers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const bookingRes = await getBookingById(bookingId);
+        const [bookingRes, passengerRes] = await Promise.all([
+          getBookingById(bookingId),
+          getPassengersByBooking(bookingId)
+        ]);
         setBooking(bookingRes.data);
-
-        const passengerRes = await getPassengersByBooking(bookingId);
         setPassengers(passengerRes.data);
-
         setLoading(false);
       } catch (err) {
-        setError("Failed to load booking details");
+        console.error("Failed to load details", err);
         setLoading(false);
-        console.error(err);
       }
     };
-
     fetchData();
   }, [bookingId]);
 
   const handleDownloadInvoice = async () => {
     setDownloading(true);
-    setError(null);
     try {
       const response = await downloadInvoice(bookingId);
-      
-      // Create a blob URL and trigger download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", `Invoice-${bookingId}.pdf`);
       document.body.appendChild(link);
       link.click();
-      link.parentNode.removeChild(link);
-
-      toast.success("Invoice downloaded successfully!", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-      setDownloading(false);
+      link.remove();
+      toast.success("Invoice downloaded!");
     } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to download invoice";
-      toast.error(errorMsg, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-      setError(errorMsg);
+      toast.error("Failed to download invoice");
+    } finally {
       setDownloading(false);
-      console.error(err);
     }
   };
 
   const handleResendInvoice = async () => {
     setResending(true);
-    setError(null);
-    setSuccessMessage(null);
     try {
       await resendInvoiceEmail(bookingId);
-      const successMsg = "Invoice has been resent to your email!";
-      toast.success(successMsg, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-      setSuccessMessage(successMsg);
-      setResending(false);
-
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccessMessage(null), 5000);
+      toast.success("Invoice sent to email!");
     } catch (err) {
-      const errorMsg = err.response?.data?.message || "Failed to resend invoice";
-      toast.error(errorMsg, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-      setError(errorMsg);
+      toast.error("Failed to resend invoice");
+    } finally {
       setResending(false);
-      console.error(err);
     }
   };
 
-  if (loading) {
-    return <Loader />;
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div></div>;
 
-  if (!booking) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4 sm:p-8 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 font-semibold">Failed to load booking details</p>
-        </div>
-      </div>
-    );
-  }
+  if (!booking) return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="text-red-500 text-xl font-semibold mb-4">Book not found or error loading details.</div>
+      <button onClick={() => navigate("/")} className="px-6 py-2 bg-blue-600 text-white rounded-lg">Return Home</button>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
-      <div className="max-w-2xl mx-auto">
-        {/* Success Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-            <svg
-              className="w-8 h-8 text-green-600"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-green-600 mb-2">
-            Payment Successful!
-          </h1>
-          <p className="text-gray-600">Your booking has been confirmed</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 pt-20 pb-12">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover theme="colored" />
 
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
-            <span>{error}</span>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-700 hover:text-red-900 font-bold"
-            >
-              ✕
-            </button>
-          </div>
-        )}
+      <div className="container mx-auto px-4 max-w-4xl">
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden animate-fade-in-up">
 
-        {/* Success Message */}
-        {successMessage && (
-          <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
-            <span>✓ {successMessage}</span>
-            <button
-              onClick={() => setSuccessMessage(null)}
-              className="text-green-700 hover:text-green-900 font-bold"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
-        {/* Booking Details Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Booking Details</h2>
-
-          {/* Booking ID and Status */}
-          <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-gray-200">
-            <div>
-              <p className="text-sm text-gray-600">Booking ID</p>
-              <p className="text-lg font-bold text-gray-800">{bookingId}</p>
+          {/* Header Banner */}
+          <div className="bg-emerald-600 p-8 text-center relative overflow-hidden">
+            <div className="relative z-10">
+              <div className="mx-auto w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 shadow-lg animate-bounce-slow">
+                <svg className="w-10 h-10 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <h1 className="text-3xl font-bold text-white mb-2">Booking Confirmed!</h1>
+              <p className="text-emerald-100">Thank you for booking with E-Tour. Your adventure awaits.</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-600">Booking Status</p>
-              <p className="text-lg font-bold text-green-600">
-                {booking.bookingStatus}
-              </p>
+            {/* Decorative circles */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+              <div className="absolute -top-10 -left-10 w-40 h-40 bg-white rounded-full mix-blend-overlay"></div>
+              <div className="absolute top-20 right-10 w-20 h-20 bg-white rounded-full mix-blend-overlay"></div>
             </div>
           </div>
 
-          {/* Tour Information */}
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-3">Tour Information</h3>
-            <div className="space-y-2">
-              <p className="text-gray-600">
-                <span className="font-medium">Tour:</span> {booking.tourDescription}
-              </p>
-              <p className="text-gray-600">
-                <span className="font-medium">Category:</span> {booking.tourCategoryName}
-              </p>
-              <p className="text-gray-600">
-                <span className="font-medium">Departure Date:</span>{" "}
-                {booking.departureDate}
-              </p>
-              <p className="text-gray-600">
-                <span className="font-medium">End Date:</span> {booking.endDate}
-              </p>
-              <p className="text-gray-600">
-                <span className="font-medium">Days:</span> {booking.numberOfDays} days
-              </p>
+          <div className="p-8">
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+              {/* Left: Actions & Status */}
+              <div className="lg:col-span-1 space-y-6">
+                <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100">
+                  <h3 className="text-emerald-800 font-bold mb-1">Booking Status</h3>
+                  <p className="text-2xl font-bold text-emerald-600 mb-4">{booking.bookingStatus}</p>
+                  <div className="text-sm text-emerald-700 space-y-2">
+                    <p className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                      Confirmation sent to {booking.customerEmail}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100">
+                  <h3 className="text-blue-800 font-bold mb-4">Manage Booking</h3>
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleDownloadInvoice}
+                      disabled={downloading}
+                      className="w-full flex items-center justify-center gap-2 bg-white text-blue-600 border border-blue-200 py-2 px-4 rounded-xl font-semibold hover:bg-blue-50 transition"
+                    >
+                      {downloading ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>}
+                      Download Invoice
+                    </button>
+                    <button
+                      onClick={handleResendInvoice}
+                      disabled={resending}
+                      className="w-full flex items-center justify-center gap-2 bg-white text-blue-600 border border-blue-200 py-2 px-4 rounded-xl font-semibold hover:bg-blue-50 transition"
+                    >
+                      {resending ? <div className="animate-spin h-4 w-4 border-2 border-blue-600 rounded-full border-t-transparent"></div> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
+                      Email Invoice
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Details */}
+              <div className="lg:col-span-2 space-y-8">
+
+                {/* Summary Section */}
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">Booking Summary</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Tour Name</p>
+                      <p className="font-semibold text-gray-900 text-lg">{booking.tourDescription}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Booking ID</p>
+                      <p className="font-mono font-semibold text-gray-900 text-lg">#{bookingId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Departure</p>
+                      <p className="font-semibold text-gray-900">{booking.departureDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 uppercase font-bold tracking-wider">Duration</p>
+                      <p className="font-semibold text-gray-900">{booking.numberOfDays} Days</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Passengers Section */}
+                <div>
+                  <h2 className="text-xl font-bold text-gray-800 mb-4 pb-2 border-b">Passenger List</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {passengers.map((p, i) => (
+                      <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm">
+                          {i + 1}
+                        </div>
+                        <span className="font-medium text-gray-700">{p.passengerName}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer Actions */}
+                <div className="pt-6 mt-6 border-t flex flex-col sm:flex-row gap-4 justify-between items-center">
+                  <div className="text-gray-500 text-sm">
+                    Need help? <a href="/about" className="text-emerald-600 font-semibold hover:underline">Contact Support</a>
+                  </div>
+                  <button
+                    onClick={() => navigate("/")}
+                    className="px-8 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-black transition shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                  >
+                    Explorer More Tours
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
-
-          {/* Customer Information */}
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-3">Customer Information</h3>
-            <div className="space-y-2">
-              <p className="text-gray-600">
-                <span className="font-medium">Name:</span> {booking.customerName}
-              </p>
-              <p className="text-gray-600">
-                <span className="font-medium">Email:</span> {booking.customerEmail}
-              </p>
-              <p className="text-gray-600">
-                <span className="font-medium">Phone:</span>{" "}
-                {booking.customerMobile}
-              </p>
-            </div>
-          </div>
-
-          {/* Passengers */}
-          <div className="mb-6 pb-6 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-3">
-              Passengers ({passengers.length})
-            </h3>
-            <ul className="space-y-2">
-              {passengers.map((passenger, idx) => (
-                <li key={idx} className="text-gray-600">
-                  <span className="font-medium">{idx + 1}.</span> {passenger.passengerName}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Amount Summary */}
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex justify-between mb-2">
-              <span className="text-gray-700">Tour Amount:</span>
-              <span className="font-semibold">₹{booking.tourAmount?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between mb-4 pb-4 border-b border-green-200">
-              <span className="text-gray-700">Tax (5%):</span>
-              <span className="font-semibold">₹{booking.taxAmount?.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-lg">
-              <span className="font-bold text-gray-800">Total Paid:</span>
-              <span className="font-bold text-green-600">
-                ₹{booking.totalAmount?.toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <button
-            onClick={handleDownloadInvoice}
-            disabled={downloading}
-            className={`w-full py-3 px-6 rounded-lg font-bold text-white transition ${
-              downloading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
-            }`}
-          >
-            {downloading ? "Downloading..." : "📥 Download Invoice"}
-          </button>
-
-          <button
-            onClick={handleResendInvoice}
-            disabled={resending}
-            className={`w-full py-3 px-6 rounded-lg font-bold text-white transition ${
-              resending
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-purple-600 hover:bg-purple-700 active:bg-purple-800"
-            }`}
-          >
-            {resending ? "Sending..." : "📧 Resend Invoice to Email"}
-          </button>
-
-          <button
-            onClick={() => navigate("/")}
-            className="w-full py-3 px-6 rounded-lg font-bold text-gray-800 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition"
-          >
-            📖 Browse More Tours
-          </button>
-
-          <button
-            onClick={() => navigate(`/bookings/${bookingId}`)}
-            className="w-full py-3 px-6 rounded-lg font-bold text-gray-800 bg-gray-200 hover:bg-gray-300 active:bg-gray-400 transition"
-          >
-            📋 View Full Booking Details
-          </button>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
-          <p className="text-sm text-blue-700">
-            <span className="font-semibold">✓ Confirmation email</span> has been sent to{" "}
-            <span className="font-semibold">{booking.customerEmail}</span>
-          </p>
-          <p className="text-sm text-blue-700 mt-2">
-            You can download your invoice anytime from your account.
-          </p>
         </div>
       </div>
     </div>

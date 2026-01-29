@@ -17,6 +17,18 @@ public class CostServiceImpl implements CostService {
 	@Autowired
 	private CostRepository costRepository;
 
+	@Autowired
+	private com.etour.app.repository.CategoryRepository categoryRepository;
+
+	@Override
+	public CostMaster saveCost(CostMaster cost) {
+		if (cost.getCatmaster() != null && cost.getCatmaster().getCategoryId() != null) {
+			categoryRepository.findByCategoryId(cost.getCatmaster().getCategoryId())
+					.ifPresent(cost::setCatmaster);
+		}
+		return costRepository.save(cost);
+	}
+
 	@Override
 	public List<CostMaster> getAllCosts() {
 		// TODO Auto-generated method stub
@@ -37,22 +49,21 @@ public class CostServiceImpl implements CostService {
 	}
 
 	@Override
-    public List<CostDTO> getCostsByCatmasterId(Integer catmasterId) {
+	public List<CostDTO> getCostsByCatmasterId(Integer catmasterId) {
 
-        List<CostMaster> costs =
-                costRepository.findByCatmaster_Id(catmasterId);
+		List<CostMaster> costs = costRepository.findByCatmaster_Id(catmasterId);
 
-        return costs.stream().map(c -> {
-            CostDTO dto = new CostDTO();
-            dto.setBaseCost(c.getBaseCost());
-            dto.setSinglePersonCost(c.getSinglePersonCost());
-            dto.setExtraPersonCost(c.getExtraPersonCost());
-            dto.setChildWithBedCost(c.getChildWithBedCost());
-            dto.setChildWithoutBedCost(c.getChildWithoutBedCost());
-            dto.setValidFromDate(c.getValidFromDate());
-            dto.setValidToDate(c.getValidToDate());
-            return dto;
-        }).toList();
-    }
+		return costs.stream().map(c -> {
+			CostDTO dto = new CostDTO();
+			dto.setBaseCost(c.getBaseCost());
+			dto.setSinglePersonCost(c.getSinglePersonCost());
+			dto.setExtraPersonCost(c.getExtraPersonCost());
+			dto.setChildWithBedCost(c.getChildWithBedCost());
+			dto.setChildWithoutBedCost(c.getChildWithoutBedCost());
+			dto.setValidFromDate(c.getValidFromDate());
+			dto.setValidToDate(c.getValidToDate());
+			return dto;
+		}).toList();
+	}
 
 }

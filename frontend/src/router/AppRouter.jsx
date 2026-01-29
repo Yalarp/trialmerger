@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Home from "../pages/Home";
 import CategoryPage from "../pages/CategoryPage";
 import TourPage from "../pages/tour/TourPage";
@@ -16,15 +16,35 @@ import BookingDetailsPage from "../pages/BookingDetailsPage";
 import RequireLogin from "../components/RequireLogin";
 import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
+import ForgotPasswordPage from "../pages/ForgotPasswordPage";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
+import DestinationsPage from "../pages/DestinationsPage";
+import ProfilePage from "../pages/ProfilePage";
 import Navbar from "../components/Navbar";
 
+// Admin Imports
+import AdminLayout from '../components/admin/AdminLayout';
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import CategoryManager from '../pages/admin/CategoryManager';
+import TourManager from '../pages/admin/TourManager';
+import CostManager from '../pages/admin/CostManager';
+import ItineraryManager from '../pages/admin/ItineraryManager';
+import CustomerManager from '../pages/admin/CustomerManager';
+import CustomerUpload from '../pages/admin/CustomerUpload';
+import PaymentManager from '../pages/admin/PaymentManager';
+import RequireAdmin from '../components/admin/RequireAdmin';
 
-export default function AppRouter() {
+
+const MainContent = () => {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+
   return (
-    <BrowserRouter>
-      <Navbar />
+    <>
+      {!isAdmin && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/destinations" element={<DestinationsPage />} />
         <Route path="/categories/:categoryId" element={<CategoryPage />} />
 
         {/* <Route path="/tours/:catmasterId" element={<TourDetails />} /> */}
@@ -48,6 +68,9 @@ export default function AppRouter() {
 
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         <Route path="/booking/passengers" element={<PassengerForm />} />
         <Route path="/booking/:bookingId/passengers" element={<PassengerForm />} />
@@ -67,8 +90,31 @@ export default function AppRouter() {
           }
         />
 
+        {/* Admin Routes */}
+        <Route path="/admin" element={
+          <RequireAdmin>
+            <AdminLayout />
+          </RequireAdmin>
+        }>
+          <Route index element={<AdminDashboard />} />
+          <Route path="categories" element={<CategoryManager />} />
+          <Route path="tours" element={<TourManager />} />
+          <Route path="costs" element={<CostManager />} />
+          <Route path="itineraries" element={<ItineraryManager />} />
+          <Route path="customers" element={<CustomerManager />} />
+          <Route path="customers/upload" element={<CustomerUpload />} />
+          <Route path="payments" element={<PaymentManager />} />
+        </Route>
 
       </Routes>
+    </>
+  );
+};
+
+export default function AppRouter() {
+  return (
+    <BrowserRouter>
+      <MainContent />
     </BrowserRouter>
   );
 }

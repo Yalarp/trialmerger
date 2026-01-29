@@ -1,26 +1,32 @@
 package com.etour.app.dto;
 
-import com.etour.app.entity.CustomerMaster;
-
-/**
- * Data Transfer Object for Customer - excludes sensitive data like password
- */
 public class CustomerDTO {
-    private Integer id;
+    private Integer customerId;
     private String name;
     private String email;
     private String mobileNumber;
     private String address;
     private String city;
     private String state;
+    private String password;
 
-    // Default constructor
     public CustomerDTO() {
     }
 
-    // Constructor to convert from CustomerMaster entity
-    public CustomerDTO(CustomerMaster customer) {
-        this.id = customer.getId();
+    public CustomerDTO(Integer customerId, String name, String email, String mobileNumber, String address, String city,
+            String state) {
+        this.customerId = customerId;
+        this.name = name;
+        this.email = email;
+        this.mobileNumber = mobileNumber;
+        this.address = address;
+        this.city = city;
+        this.state = state;
+    }
+
+    // Constructor accepting CustomerMaster
+    public CustomerDTO(com.etour.app.entity.CustomerMaster customer) {
+        this.customerId = customer.getId();
         this.name = customer.getName();
         this.email = customer.getEmail();
         this.mobileNumber = customer.getMobileNumber();
@@ -30,12 +36,12 @@ public class CustomerDTO {
     }
 
     // Getters and Setters
-    public Integer getId() {
-        return id;
+    public Integer getCustomerId() {
+        return customerId;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setCustomerId(Integer customerId) {
+        this.customerId = customerId;
     }
 
     public String getName() {
@@ -84,5 +90,13 @@ public class CustomerDTO {
 
     public void setState(String state) {
         this.state = state;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

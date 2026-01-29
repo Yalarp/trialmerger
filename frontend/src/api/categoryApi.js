@@ -9,3 +9,7 @@ export const getMainCategories = () => {
 export const handleCategoryClick = (categoryId) => {
   return axios.get(`${BASE_URL}/${categoryId}`);
 };
+
+export const searchCategories = (params) => {
+  return axios.get(`${BASE_URL}/search`, { params });
+};

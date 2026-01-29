@@ -11,7 +11,8 @@ const PaymentPage = () => {
 
   const [booking, setBooking] = useState(null);
   const [passengers, setPassengers] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [processingPayment, setProcessingPayment] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -19,11 +20,13 @@ const PaymentPage = () => {
       try {
         const bookingRes = await getBookingById(bookingId);
         setBooking(bookingRes.data);
-        
+
         const passengerRes = await getPassengersByBooking(bookingId);
         setPassengers(passengerRes.data);
+        setLoading(false);
       } catch (err) {
         setError("Failed to load booking details");
+        setLoading(false);
         console.error(err);
       }
     };
@@ -34,34 +37,24 @@ const PaymentPage = () => {
   const handlePaymentClick = async () => {
     if (!booking) return;
 
-    setLoading(true);
+    setProcessingPayment(true);
     setError(null);
 
     try {
-      // Debug: Log booking data structure
-      console.log("Booking object:", booking);
-      console.log("CustomerName (flat):", booking.customerName);
-      console.log("Customer object:", booking.customer);
-
       // Step 1: Create Razorpay Order
       const orderResponse = await createRazorpayOrder(bookingId, booking.totalAmount);
-      console.log("Order Response:", orderResponse.data);
-      
+
       const { orderId, amount, currency } = orderResponse.data;
 
       // Handle BOTH flat and nested customer/tour structures
       const customerName = booking.customerName || booking.customer?.name || "";
       const customerEmail = booking.customerEmail || booking.customer?.email || "";
       const customerMobile = booking.customerMobile || booking.customer?.mobileNumber || "";
-      const customerId = booking.customerId || booking.customer?.id || "";
-
-      // Log for debugging
-      console.log("Resolved Prefill:", { customerName, customerEmail, customerMobile, customerId });
 
       // Validate that we have required fields
-      if (!orderId || !amount || !customerEmail) {
+      if (!orderId || !amount) {
         setError("Missing required payment information. Please refresh and try again.");
-        setLoading(false);
+        setProcessingPayment(false);
         return;
       }
 
@@ -72,22 +65,22 @@ const PaymentPage = () => {
         currency: currency,
         order_id: orderId,
         name: "E-Tour",
-        description: `Booking #${bookingId} Payment`,
+        description: `Booking #${bookingId}`,
+        image: "https://your-logo-url.com/logo.png", // Replace with actual logo if available
         prefill: {
           name: customerName,
           email: customerEmail,
           contact: customerMobile,
         },
         theme: {
-          color: "#0ea5e9",
+          color: "#059669", // Emerald-600 to match theme
         },
         handler: (response) => {
-          // Step 3: Verify Payment
           verifyPaymentWithBackend(response);
         },
         modal: {
           ondismiss: () => {
-            setLoading(false);
+            setProcessingPayment(false);
             setError("Payment was cancelled");
           },
         },
@@ -99,11 +92,11 @@ const PaymentPage = () => {
         rzp.open();
       } else {
         setError("Razorpay SDK not loaded");
-        setLoading(false);
+        setProcessingPayment(false);
       }
     } catch (err) {
       setError(err.response?.data?.message || "Failed to initiate payment");
-      setLoading(false);
+      setProcessingPayment(false);
       console.error("Payment Error:", err);
     }
   };
@@ -119,126 +112,136 @@ const PaymentPage = () => {
       });
 
       // Payment verified successfully
-      setLoading(false);
+      setProcessingPayment(false);
       navigate(`/payment/success/${bookingId}`);
     } catch (err) {
-      setLoading(false);
+      setProcessingPayment(false);
       setError(err.response?.data?.message || "Payment verification failed");
       console.error(err);
-      // Optionally navigate to failure page
       navigate(`/payment/failure`, { state: { error: err.response?.data?.message } });
     }
   };
 
-  if (!booking) {
-    return <Loader />;
-  }
+  if (loading) return <Loader />;
+
+  if (!booking) return <div className="text-center p-12 text-gray-500">Booking not found.</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-8">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gray-50 pt-24 pb-12">
+      <div className="container mx-auto px-4 max-w-5xl">
+
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Complete Payment</h1>
-          <p className="text-gray-600 mt-2">Booking #{bookingId}</p>
+          <h1 className="text-3xl font-bold text-gray-900">Secure Checkout</h1>
+          <p className="text-gray-500 mt-2">Complete your booking securely</p>
         </div>
 
-        {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2 animate-fade-in">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
             {error}
           </div>
         )}
 
-        {/* Booking Summary Card */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Booking Summary</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* Tour Details */}
-          <div className="mb-4 pb-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-2">Tour Details</h3>
-            <p className="text-gray-600">
-              <span className="font-medium">Tour:</span> {booking.tourDescription}
-            </p>
-            <p className="text-gray-600">
-              <span className="font-medium">Departure Date:</span> {booking.departureDate}
-            </p>
-            <p className="text-gray-600">
-              <span className="font-medium">Passengers:</span> {passengers.length}
-            </p>
-          </div>
+          {/* LEFT: Payment Method & Details */}
+          <div className="lg:col-span-2 space-y-6">
 
-          {/* Customer Details */}
-          <div className="mb-4 pb-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-2">Customer Details</h3>
-            <p className="text-gray-600">
-              <span className="font-medium">Name:</span> {booking.customerName}
-            </p>
-            <p className="text-gray-600">
-              <span className="font-medium">Email:</span> {booking.customerEmail}
-            </p>
-            <p className="text-gray-600">
-              <span className="font-medium">Phone:</span> {booking.customerMobile}
-            </p>
-          </div>
-
-          {/* Passenger List */}
-          <div className="mb-4 pb-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-700 mb-2">Passengers</h3>
-            <ul className="space-y-2">
-              {passengers.map((passenger, idx) => (
-                <li key={idx} className="text-gray-600">
-                  {idx + 1}. {passenger.passengerName}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Amount Breakdown */}
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="flex justify-between mb-2">
-              <span className="text-gray-700">Tour Amount:</span>
-              <span className="font-semibold">₹{booking.tourAmount?.toFixed(2)}</span>
+            {/* 1. Review Passengers */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="bg-emerald-100 text-emerald-600 w-8 h-8 flex items-center justify-center rounded-full text-sm">1</span>
+                Travellers
+              </h2>
+              <div className="space-y-3 pl-10">
+                {passengers.map((passenger, idx) => (
+                  <div key={idx} className="flex items-center gap-3 text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    <div className="bg-gray-200 rounded-full p-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
+                    </div>
+                    <span className="font-medium">{passenger.passengerName}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex justify-between mb-4 pb-4 border-b border-blue-200">
-              <span className="text-gray-700">Tax (5%):</span>
-              <span className="font-semibold">₹{booking.taxAmount?.toFixed(2)}</span>
+
+            {/* 2. Payment Method */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="bg-emerald-100 text-emerald-600 w-8 h-8 flex items-center justify-center rounded-full text-sm">2</span>
+                Payment Method
+              </h2>
+
+              <div className="pl-10">
+                <div className="border border-emerald-500 bg-emerald-50 rounded-xl p-4 flex items-center justify-between cursor-pointer shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <img src="https://razorpay.com/assets/razorpay-glyph.svg" alt="Razorpay" className="h-8 w-8" />
+                    <div>
+                      <p className="font-bold text-gray-900">Razorpay Secure</p>
+                      <p className="text-sm text-gray-600">Cards, UPI, NetBanking, Wallets</p>
+                    </div>
+                  </div>
+                  <div className="h-5 w-5 rounded-full border-2 border-emerald-600 flex items-center justify-center">
+                    <div className="h-2.5 w-2.5 rounded-full bg-emerald-600"></div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 text-xs text-gray-500 bg-gray-100 p-3 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                  Your payment is encrypted and authenticated securely.
+                </div>
+              </div>
             </div>
-            <div className="flex justify-between text-lg">
-              <span className="font-bold text-gray-800">Total Amount:</span>
-              <span className="font-bold text-blue-600">₹{booking.totalAmount?.toFixed(2)}</span>
+
+          </div>
+
+          {/* RIGHT: Order Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-28">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h3>
+
+              <div className="space-y-4 text-sm text-gray-600 mb-6">
+                <div className="flex justify-between">
+                  <span>Booking ID</span>
+                  <span className="font-mono font-bold text-gray-800">#{bookingId}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Date</span>
+                  <span className="font-medium text-gray-800">{new Date().toLocaleDateString()}</span>
+                </div>
+                <div className="border-t border-dashed border-gray-200 my-4"></div>
+                <div className="flex justify-between">
+                  <span>Tour Cost</span>
+                  <span className="font-medium">₹ {booking.tourAmount?.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Taxes (5%)</span>
+                  <span className="font-medium">₹ {booking.taxAmount?.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-xl flex justify-between items-center mb-6">
+                <span className="font-bold text-gray-700">Total Payable</span>
+                <span className="font-bold text-2xl text-emerald-600">₹{booking.totalAmount?.toFixed(2)}</span>
+              </div>
+
+              <button
+                onClick={handlePaymentClick}
+                disabled={processingPayment}
+                className={`
+                            w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all
+                            ${processingPayment ? 'bg-gray-400 cursor-wait' : 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-500/30'}
+                        `}
+              >
+                {processingPayment ? 'Processing...' : `Pay Now`}
+              </button>
+
+              <p className="text-xs text-center text-gray-400 mt-4">
+                By proceeding, you agree to our Terms & Conditions
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Booking Status */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <p className="text-yellow-800">
-            <span className="font-semibold">Booking Status:</span> {booking.bookingStatus}
-          </p>
-          <p className="text-sm text-yellow-700 mt-2">
-            Please complete the payment to confirm your booking.
-          </p>
-        </div>
-
-        {/* Payment Button */}
-        <button
-          onClick={handlePaymentClick}
-          disabled={loading}
-          className={`w-full py-3 px-6 rounded-lg font-bold text-white text-lg transition ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-green-600 hover:bg-green-700 active:bg-green-800"
-          }`}
-        >
-          {loading ? "Processing..." : `Pay ₹${booking.totalAmount?.toFixed(2)}`}
-        </button>
-
-        {/* Info Message */}
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
-          <p>
-            💳 You will be redirected to Razorpay payment gateway. This is a secure payment process.
-          </p>
         </div>
       </div>
     </div>

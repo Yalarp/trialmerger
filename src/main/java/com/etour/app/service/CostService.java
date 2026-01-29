@@ -7,7 +7,12 @@ import com.etour.app.dto.CostDTO;
 
 public interface CostService {
     List<CostMaster> getAllCosts();
+
     Optional<CostMaster> getCostById(int id);
+
     void deleteCost(int id);
+
     List<CostDTO> getCostsByCatmasterId(Integer catmasterId);
+
+    CostMaster saveCost(CostMaster cost);
 }

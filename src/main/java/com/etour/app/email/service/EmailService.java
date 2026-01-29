@@ -7,6 +7,7 @@ public interface EmailService {
             String subject,
             String body,
             byte[] pdfBytes,
-            String fileName
-    );
+            String fileName);
+
+    void sendPasswordResetEmail(String toEmail, String resetLink);
 }

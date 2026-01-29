@@ -1,9 +1,7 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:8080/api/passengers";
+import apiClient from "./client";
 
 export const addPassenger = (passenger) =>
-  axios.post(`${BASE_URL}/add`, passenger);
+  apiClient.post('/passengers/add', passenger);
 
 export const getPassengersByBooking = (bookingId) =>
-  axios.get(`${BASE_URL}/booking/${bookingId}`);
+  apiClient.get(`/passengers/booking/${bookingId}`);

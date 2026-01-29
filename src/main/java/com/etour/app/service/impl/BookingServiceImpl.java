@@ -270,7 +270,13 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public void cancelBooking(Integer bookingId) {
+        // 1. Delete associated passengers first
+        List<PassengerMaster> passengers = passengerRepo.findPassengersByBookingId(bookingId);
+        if (passengers != null && !passengers.isEmpty()) {
+            passengerRepo.deleteAll(passengers);
+        }
 
+        // 2. Delete the booking header
         bookingRepo.deleteById(bookingId);
     }
 

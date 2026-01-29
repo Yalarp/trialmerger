@@ -25,8 +25,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final EmailService emailService;
 
     public PaymentServiceImpl(PaymentRepository paymentRepo,
-                              BookingHeaderRepository bookingRepository,InvoiceService invoiceService,
-                              EmailService emailService) {
+            BookingHeaderRepository bookingRepository, InvoiceService invoiceService,
+            EmailService emailService) {
         this.paymentRepo = paymentRepo;
         this.bookingRepository = bookingRepository;
         this.invoiceService = invoiceService;
@@ -66,67 +66,65 @@ public class PaymentServiceImpl implements PaymentService {
             // If duplicates exist in database, provide detailed error message
             if (existingPayments.size() > 1) {
                 String paymentIds = existingPayments.stream()
-                    .map(p -> String.valueOf(p.getId()))
-                    .reduce((a, b) -> a + ", " + b)
-                    .orElse("");
+                        .map(p -> String.valueOf(p.getId()))
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("");
                 throw new RuntimeException(
-                    "CRITICAL: Duplicate transaction IDs found in database! " +
-                    "Transaction ID '" + dto.getTransactionId() + "' exists for Payment IDs: " + paymentIds + ". " +
-                    "This indicates data corruption. Please clean up duplicate records first."
-                );
+                        "CRITICAL: Duplicate transaction IDs found in database! " +
+                                "Transaction ID '" + dto.getTransactionId() + "' exists for Payment IDs: " + paymentIds
+                                + ". " +
+                                "This indicates data corruption. Please clean up duplicate records first.");
             } else {
                 // Single existing payment - normal duplicate prevention
                 throw new RuntimeException(
-                    "Transaction ID already exists: " + dto.getTransactionId() + 
-                    ". Payment ID: " + existingPayments.get(0).getId() + 
-                    ", Booking ID: " + existingPayments.get(0).getBooking().getId()
-                );
+                        "Transaction ID already exists: " + dto.getTransactionId() +
+                                ". Payment ID: " + existingPayments.get(0).getId() +
+                                ", Booking ID: " + existingPayments.get(0).getBooking().getId());
             }
         }
 
         // ========== VALIDATION 4: Check if Booking Already Confirmed ==========
         boolean isAlreadyConfirmed = "CONFIRMED".equalsIgnoreCase(booking.getBookingStatus());
-        
+
         // ========== VALIDATION 5: Amount Validation for SUCCESS Payments ==========
         if ("SUCCESS".equalsIgnoreCase(dto.getPaymentStatus())) {
-            
+
             // Check if booking is already confirmed
             if (isAlreadyConfirmed) {
                 // Check if there's already a successful payment
                 List<Payment> existingSuccessfulPayments = paymentRepo.findByBookingId(dto.getBookingId())
-                    .stream()
-                    .filter(p -> "SUCCESS".equalsIgnoreCase(p.getPaymentStatus()))
-                    .toList();
-                
+                        .stream()
+                        .filter(p -> "SUCCESS".equalsIgnoreCase(p.getPaymentStatus()))
+                        .toList();
+
                 if (!existingSuccessfulPayments.isEmpty()) {
                     throw new RuntimeException(
-                        "Booking is already CONFIRMED with successful payment. " +
-                        "Cannot process another successful payment for booking ID: " + dto.getBookingId() + ". " +
-                        "Existing successful payment ID: " + existingSuccessfulPayments.get(0).getId()
-                    );
+                            "Booking is already CONFIRMED with successful payment. " +
+                                    "Cannot process another successful payment for booking ID: " + dto.getBookingId()
+                                    + ". " +
+                                    "Existing successful payment ID: " + existingSuccessfulPayments.get(0).getId());
                 }
             }
-            
+
             // Validate paid amount matches booking total amount (exact match required)
             if (dto.getPaidAmount().compareTo(booking.getTotalAmount()) != 0) {
                 throw new RuntimeException(
-                    String.format(
-                        "Paid amount (%.2f) does not match booking total amount (%.2f) for booking ID: %d",
-                        dto.getPaidAmount(),
-                        booking.getTotalAmount(),
-                        dto.getBookingId()
-                    )
-                );
+                        String.format(
+                                "Paid amount (%.2f) does not match booking total amount (%.2f) for booking ID: %d",
+                                dto.getPaidAmount(),
+                                booking.getTotalAmount(),
+                                dto.getBookingId()));
             }
         }
 
-        // ========== VALIDATION 6: For FAILED payments, amount should be 0 or less ==========
+        // ========== VALIDATION 6: For FAILED payments, amount should be 0 or less
+        // ==========
         if ("FAILED".equalsIgnoreCase(dto.getPaymentStatus())) {
             if (dto.getPaidAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
                 throw new RuntimeException(
-                    "Failed payment cannot have paid amount greater than 0. " +
-                    "Paid amount: " + dto.getPaidAmount() + ". Set paid amount to 0.00 for failed payments."
-                );
+                        "Failed payment cannot have paid amount greater than 0. " +
+                                "Paid amount: " + dto.getPaidAmount()
+                                + ". Set paid amount to 0.00 for failed payments.");
             }
         }
 
@@ -144,7 +142,8 @@ public class PaymentServiceImpl implements PaymentService {
         Payment savedPayment = paymentRepo.save(payment);
 
         // ========== UPDATE BOOKING STATUS ==========
-        // Only update to CONFIRMED if payment is SUCCESS and booking is currently PENDING
+        // Only update to CONFIRMED if payment is SUCCESS and booking is currently
+        // PENDING
         // This ensures:
         // 1. Failed payments don't change booking status
         // 2. Already confirmed bookings don't get updated unnecessarily
@@ -160,36 +159,32 @@ public class PaymentServiceImpl implements PaymentService {
 
         // ========== SEND INVOICE EMAIL (ONLY ON SUCCESS) ==========
         /*
-         WHY HERE?
-         - Payment SUCCESS is the source of truth
-         - Booking is already CONFIRMED
-         - Invoice generation is guaranteed to succeed
-         - Prevents duplicate emails
-        */
+         * WHY HERE?
+         * - Payment SUCCESS is the source of truth
+         * - Booking is already CONFIRMED
+         * - Invoice generation is guaranteed to succeed
+         * - Prevents duplicate emails
+         */
         if (bookingJustConfirmed) {
             try {
                 // 1️⃣ Generate Invoice DTO
-                InvoiceResponseDTO invoice =
-                        invoiceService.generateInvoice(booking.getId().longValue());
+                InvoiceResponseDTO invoice = invoiceService.generateInvoice(booking.getId().longValue());
 
                 // 2️⃣ Generate Invoice PDF
-                byte[] pdfBytes =
-                        InvoicePdfGenerator.generateInvoicePdf(invoice);
+                byte[] pdfBytes = InvoicePdfGenerator.generateInvoicePdf(invoice);
 
                 // 3️⃣ Send Email via SendGrid
                 String customerEmail = invoice.getCustomer().getEmail();
-                
+
                 emailService.sendInvoiceEmail(
                         customerEmail,
                         "Your E-Tour India Invoice – Booking #" + booking.getId(),
                         EmailTemplateUtil.invoiceEmailBody(
                                 invoice.getCustomer().getName(),
-                                booking.getId().longValue()
-                        ),
+                                booking.getId().longValue()),
                         pdfBytes,
-                        "ETour-Invoice-" + booking.getId() + ".pdf"
-                );
-                
+                        "ETour-Invoice-" + booking.getId() + ".pdf");
+
             } catch (Exception e) {
                 // Email failure should not affect payment confirmation
                 e.printStackTrace();
@@ -233,17 +228,17 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("Payment not found for transaction id: " + transactionId);
         }
 
-        // If multiple payments found with same transaction ID, this is a data integrity issue
+        // If multiple payments found with same transaction ID, this is a data integrity
+        // issue
         if (payments.size() > 1) {
             String paymentIds = payments.stream()
-                .map(p -> String.valueOf(p.getId()))
-                .reduce((a, b) -> a + ", " + b)
-                .orElse("");
+                    .map(p -> String.valueOf(p.getId()))
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
             throw new RuntimeException(
-                "CRITICAL: Multiple payments found with transaction ID '" + transactionId + "'. " +
-                "Payment IDs: " + paymentIds + ". " +
-                "This indicates duplicate data in the database. Please clean up duplicates."
-            );
+                    "CRITICAL: Multiple payments found with transaction ID '" + transactionId + "'. " +
+                            "Payment IDs: " + paymentIds + ". " +
+                            "This indicates duplicate data in the database. Please clean up duplicates.");
         }
 
         return toDTO(payments.get(0));
@@ -256,6 +251,14 @@ public class PaymentServiceImpl implements PaymentService {
             throw new RuntimeException("Payment not found with ID: " + id);
         }
         paymentRepo.deleteById(id);
+    }
+
+    @Override
+    public List<PaymentDTO> getAllPayments() {
+        return paymentRepo.findAll()
+                .stream()
+                .map(this::toDTO)
+                .toList();
     }
 
     // ================= ENTITY → DTO =================

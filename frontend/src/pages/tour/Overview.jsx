@@ -1,49 +1,34 @@
-import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { getTourDetails } from "../../api/tourApi";
+import { useOutletContext } from "react-router-dom";
 
 const Overview = () => {
-  const { catmasterId } = useParams();
-  const navigate = useNavigate();
+  const { tour } = useOutletContext(); // Access data passed from TourPage
 
-  const [tour, setTour] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getTourDetails(catmasterId)
-      .then(res => {
-        setTour(res.data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [catmasterId]);
-
-  if (loading) return <p>Loading overview...</p>;
-  if (!tour) return <p>Tour not found</p>;
+  if (!tour) return null;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold">{tour.categoryName}</h1>
-      <p className="text-gray-600">{tour.description}</p>
+    <div className="animate-fade-in">
+      <h2 className="text-3xl font-bold text-gray-900 mb-6 border-l-4 border-teal-500 pl-4">
+        {tour.categoryName}
+      </h2>
 
-      <div className="flex gap-6">
-        <div className="bg-gray-100 p-4 rounded">
-          <p className="text-sm text-gray-500">Duration</p>
-          <p className="font-semibold">{tour.numberOfDays} Days</p>
-        </div>
-
-        <div className="bg-gray-100 p-4 rounded">
-          <p className="text-sm text-gray-500">Starting From</p>
-          <p className="font-semibold">₹ {tour.baseCost} / person</p>
-        </div>
+      <div className="prose prose-lg text-gray-600 max-w-none leading-relaxed">
+        <p>{tour.description}</p>
       </div>
 
-      <button
-        className="px-6 py-3 bg-blue-600 text-white rounded"
-        onClick={() => navigate(`/tours/${catmasterId}/book`)}
-      >
-        Book Now
-      </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+        <div className="bg-teal-50 p-6 rounded-2xl border border-teal-100">
+          <p className="text-teal-600 text-sm font-bold uppercase tracking-wider mb-2">Duration</p>
+          <p className="text-2xl font-bold text-gray-800">{tour.numberOfDays} Days</p>
+        </div>
+        <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+          <p className="text-blue-600 text-sm font-bold uppercase tracking-wider mb-2">Tour Type</p>
+          <p className="text-2xl font-bold text-gray-800">Group Tour</p>
+        </div>
+        <div className="bg-purple-50 p-6 rounded-2xl border border-purple-100">
+          <p className="text-purple-600 text-sm font-bold uppercase tracking-wider mb-2">Activities</p>
+          <p className="text-2xl font-bold text-gray-800">Sightseeing</p>
+        </div>
+      </div>
     </div>
   );
 };

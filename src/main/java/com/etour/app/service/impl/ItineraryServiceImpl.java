@@ -15,12 +15,23 @@ import com.etour.app.service.ItineraryService;
 public class ItineraryServiceImpl implements ItineraryService {
 
 	@Autowired
-    private  ItinerarryRepository itinerarryRepository;
+	private ItinerarryRepository itinerarryRepository;
+
+	@Autowired
+	private com.etour.app.repository.CategoryRepository categoryRepository;
 
 	@Override
 	public ItineraryMaster saveItinerary(ItineraryMaster itinerary) {
-		// TODO Auto-generated method stub
+		if (itinerary.getCatmaster() != null && itinerary.getCatmaster().getCategoryId() != null) {
+			categoryRepository.findByCategoryId(itinerary.getCatmaster().getCategoryId())
+					.ifPresent(itinerary::setCatmaster);
+		}
 		return itinerarryRepository.save(itinerary);
+	}
+
+	@Override
+	public void deleteItinerary(Integer id) {
+		itinerarryRepository.deleteById(id);
 	}
 
 	@Override
@@ -35,12 +46,11 @@ public class ItineraryServiceImpl implements ItineraryService {
 		return itinerarryRepository.findById(id).orElse(null);
 	}
 
-
 	@Override
 	public List<ItineraryResponseDTO> getItinerariesByCatmasterId(Integer catmasterId) {
 		// TODO Auto-generated method stub
 		List<ItineraryMaster> itineraries = itinerarryRepository.findByCatmaster_IdOrderByDayNumberAsc(catmasterId);
-		
+
 		return itineraries.stream().map(itinerary -> {
 			ItineraryResponseDTO dto = new ItineraryResponseDTO();
 			dto.setDayNumber(itinerary.getDayNumber());

@@ -31,6 +31,15 @@ public class CustomerMaster {
     @Column(name = "state", nullable = false, length = 50)
     private String state;
 
+    @Column(name = "reset_password_token")
+    private String resetPasswordToken;
+
+    @Column(name = "reset_password_token_expiry")
+    private java.time.LocalDateTime resetPasswordTokenExpiry;
+
+    @Column(name = "role", length = 20)
+    private String role = "CUSTOMER";
+
     public Integer getId() {
         return id;
     }
@@ -95,4 +104,27 @@ public class CustomerMaster {
         this.state = state;
     }
 
+    public String getResetPasswordToken() {
+        return resetPasswordToken;
+    }
+
+    public void setResetPasswordToken(String resetPasswordToken) {
+        this.resetPasswordToken = resetPasswordToken;
+    }
+
+    public java.time.LocalDateTime getResetPasswordTokenExpiry() {
+        return resetPasswordTokenExpiry;
+    }
+
+    public void setResetPasswordTokenExpiry(java.time.LocalDateTime resetPasswordTokenExpiry) {
+        this.resetPasswordTokenExpiry = resetPasswordTokenExpiry;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
 }

@@ -23,6 +23,11 @@ public class PaymentController {
         return paymentService.addPayment(dto);
     }
 
+    @GetMapping
+    public List<PaymentDTO> getAllPayments() {
+        return paymentService.getAllPayments();
+    }
+
     @GetMapping("/{id}")
     public PaymentDTO getPayment(@PathVariable Integer id) {
         return paymentService.getPaymentById(id);
@@ -35,7 +40,7 @@ public class PaymentController {
 
     @PutMapping("/{id}/status/{status}")
     public PaymentDTO updateStatus(@PathVariable Integer id,
-                                   @PathVariable String status) {
+            @PathVariable String status) {
         return paymentService.updatePaymentStatus(id, status);
     }
 

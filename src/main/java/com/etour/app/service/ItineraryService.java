@@ -14,4 +14,6 @@ public interface ItineraryService {
     ItineraryMaster getItineraryById(Integer id);
 
     List<ItineraryResponseDTO> getItinerariesByCatmasterId(Integer catmasterId);
+
+    void deleteItinerary(Integer id);
 }
