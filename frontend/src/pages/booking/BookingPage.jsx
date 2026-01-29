@@ -33,6 +33,7 @@ const BookingPage = () => {
             state: {
                 catmasterId,
                 departureDateId: selectedDateId,
+                departureDate: selectedDateObj?.departureDate, // Pass date string for age calc
                 tourName: tour?.tourName || tour?.categoryName, // specific tour name or category fallback
                 tourId: tour?.tourId || tour?.id
             }
@@ -123,7 +124,7 @@ const BookingPage = () => {
                                     className={`
                                         px-8 py-4 rounded-xl font-bold text-lg transition-all transform shadow-lg
                                         ${selectedDateId
-                                            ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-emerald-500/30 hover:-translate-y-1'
+                                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-1'
                                             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                                         }
                                     `}

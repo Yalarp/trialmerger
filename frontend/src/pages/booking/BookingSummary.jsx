@@ -91,9 +91,20 @@ const BookingSummary = () => {
 
               <div className="space-y-3 mb-8">
                 <div className="flex justify-between text-gray-600">
-                  <span>Base Tour Cost</span>
+                  <span>
+                    Total Tour Cost (Dynamic Pricing)
+                  </span>
                   <span className="font-medium">₹ {booking.tourAmount?.toLocaleString()}</span>
                 </div>
+
+                {/* Dynamic Breakdown (Optional Visual) */}
+                <div className="text-xs text-gray-400 bg-gray-50 p-2 rounded border border-dashed border-gray-200">
+                  {passengers.length === 1
+                    ? "Single Passenger Policy: Standard Adult Single Occupancy rates apply."
+                    : "Includes charges for Adults (Twin/Single) and Children."
+                  }
+                </div>
+
                 <div className="flex justify-between text-gray-600">
                   <span>Taxes & Fees (5%)</span>
                   <span className="font-medium">₹ {booking.taxAmount?.toLocaleString()}</span>
@@ -114,7 +125,7 @@ const BookingSummary = () => {
                 </button>
                 <button
                   onClick={() => navigate(`/payment/${bookingId}`)}
-                  className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-blue-500/30 hover:-translate-y-1 transition-all flex items-center gap-2 justify-center"
+                  className="px-8 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg hover:shadow-emerald-500/30 hover:-translate-y-1 transition-all flex items-center gap-2 justify-center"
                 >
                   Proceed to Payment
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
@@ -125,7 +136,7 @@ const BookingSummary = () => {
 
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

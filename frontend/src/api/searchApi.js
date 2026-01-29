@@ -1,21 +1,19 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:8080/api/search";
+import apiClient from "./client";
 
 export const searchByPeriod = (from, to) => {
-    return axios.get(`${BASE_URL}/period`, {
+    return apiClient.get('/search/period', {
         params: { from, to }
     });
 };
 
 export const searchByDuration = (min, max) => {
-    return axios.get(`${BASE_URL}/duration`, {
+    return apiClient.get('/search/duration', {
         params: { min, max }
     });
 };
 
 export const searchByCost = (min, max) => {
-    return axios.get(`${BASE_URL}/cost`, {
+    return apiClient.get('/search/cost', {
         params: { min, max }
     });
 };

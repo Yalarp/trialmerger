@@ -1,15 +1,13 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:8080/api/categories";
+import apiClient from "./client";
 
 export const getMainCategories = () => {
-  return axios.get(BASE_URL);
+  return apiClient.get('/categories');
 };
 
 export const handleCategoryClick = (categoryId) => {
-  return axios.get(`${BASE_URL}/${categoryId}`);
+  return apiClient.get(`/categories/${categoryId}`);
 };
 
 export const searchCategories = (params) => {
-  return axios.get(`${BASE_URL}/search`, { params });
+  return apiClient.get('/categories/search', { params });
 };

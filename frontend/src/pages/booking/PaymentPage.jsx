@@ -58,6 +58,13 @@ const PaymentPage = () => {
         return;
       }
 
+      // Validate customer data exists
+      if (!customerName || !customerEmail) {
+        setError("Customer information is incomplete. Please refresh and try again.");
+        setProcessingPayment(false);
+        return;
+      }
+
       // Step 2: Prepare Razorpay Options
       const options = {
         key: RAZORPAY_KEY_ID,
@@ -211,7 +218,7 @@ const PaymentPage = () => {
                 </div>
                 <div className="border-t border-dashed border-gray-200 my-4"></div>
                 <div className="flex justify-between">
-                  <span>Tour Cost</span>
+                  <span>{passengers.length === 1 ? 'Tour Cost (Single Occupancy)' : 'Tour Cost'}</span>
                   <span className="font-medium">₹ {booking.tourAmount?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -225,12 +232,20 @@ const PaymentPage = () => {
                 <span className="font-bold text-2xl text-emerald-600">₹{booking.totalAmount?.toFixed(2)}</span>
               </div>
 
+              {/* Pricing Explanation */}
+              {passengers.length === 1 && (
+                <div className="mb-6 bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-800">
+                  <p className="font-bold mb-1">Why is the price higher?</p>
+                  <p>You have booked for 1 person (Single Occupancy). The standard price is based on Twin Sharing. A supplement is added for the exclusive use of a double room.</p>
+                </div>
+              )}
+
               <button
                 onClick={handlePaymentClick}
                 disabled={processingPayment}
                 className={`
                             w-full py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all
-                            ${processingPayment ? 'bg-gray-400 cursor-wait' : 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-emerald-500/30'}
+                            ${processingPayment ? 'bg-gray-400 cursor-wait' : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30'}
                         `}
               >
                 {processingPayment ? 'Processing...' : `Pay Now`}
@@ -244,7 +259,7 @@ const PaymentPage = () => {
 
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

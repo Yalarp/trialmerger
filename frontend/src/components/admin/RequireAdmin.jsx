@@ -9,14 +9,16 @@ const RequireAdmin = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Initial check
+        setAuthenticated(isLoggedIn());
+        setRole(getCustomerRole());
+        setLoading(false);
+
         // Subscribe to auth changes
         const unsubscribe = subscribeToAuthChanges(() => {
             setAuthenticated(isLoggedIn());
             setRole(getCustomerRole());
         });
-
-        // Initial check
-        setLoading(false);
 
         return () => unsubscribe();
     }, []);

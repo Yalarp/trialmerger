@@ -42,11 +42,44 @@ const PassengerForm = () => {
     }
 
     // Validate inputs
-    for (const p of passengers) {
+    for (let i = 0; i < passengers.length; i++) {
+      const p = passengers[i];
+
       if (!p.name || !p.dob) {
-        alert("Please fill in all passenger details.");
+        alert(`Please fill in all details for Passenger ${i + 1}`);
         return;
       }
+
+      // Validate name (at least 2 characters)
+      if (p.name.trim().length < 2) {
+        alert(`Passenger ${i + 1}: Please enter a valid name`);
+        return;
+      }
+
+      // Validate date of birth (not in future)
+      const dobDate = new Date(p.dob);
+      const today = new Date();
+      if (dobDate > today) {
+        alert(`Passenger ${i + 1}: Date of birth cannot be in the future`);
+        return;
+      }
+
+      // Check if passenger is born (simple future check covers it, but ensuring valid date)
+      if (isNaN(dobDate.getTime())) {
+        alert(`Passenger ${i + 1}: Invalid date of birth`);
+        return;
+      }
+    }
+
+    // Validation: At least one adult required
+    const hasAdult = passengers.some(p => {
+      const age = calculateAge(p.dob);
+      return age !== null && age >= 12;
+    });
+
+    if (!hasAdult) {
+      alert("Booking must include at least one Adult (12+ years).");
+      return;
     }
 
     const customerId = Number(localStorage.getItem("customerId"));
@@ -82,6 +115,62 @@ const PassengerForm = () => {
     }
   };
 
+  // Helper: Calculate Age on Departure Date
+  const calculateAge = (dob) => {
+    if (!dob || !state.departureDate) return null;
+    const birthDate = new Date(dob);
+    const travelDate = new Date(state.departureDate);
+
+    let age = travelDate.getFullYear() - birthDate.getFullYear();
+    const m = travelDate.getMonth() - birthDate.getMonth();
+
+    if (m < 0 || (m === 0 && travelDate.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    return age;
+  };
+
+  const getPassengerType = (dob) => {
+    const age = calculateAge(dob);
+    if (age === null) return null;
+    if (age >= 12) return { type: 'Adult', color: 'bg-blue-100 text-blue-700' };
+    if (age >= 2) return { type: 'Child', color: 'bg-yellow-100 text-yellow-700' };
+    return { type: 'Infant', color: 'bg-pink-100 text-pink-700' };
+  };
+
+  // Derived Statistics
+  const stats = passengers.reduce((acc, p) => {
+    const age = calculateAge(p.dob);
+    if (age !== null) {
+      if (age >= 12) acc.adults++;
+      else if (age >= 2) acc.children++;
+      else acc.infants++;
+    }
+    return acc;
+  }, { adults: 0, children: 0, infants: 0 });
+
+  // Room Allocation Logic (Simple Heuristic for Display)
+  const getRoomSummary = () => {
+    // RULE: Single Passenger always gets a Single Room (Adult Pricing)
+    if (passengers.length === 1 && passengers[0].name.length > 0) {
+      return "1 Single Room (Single Occupancy)";
+    }
+
+    const { adults } = stats;
+    if (adults === 0 && passengers.length > 1) return "Check age requirements (Min 1 Adult recommended)"; // Odd case: only children?
+    if (adults === 0) return "Add passengers to see room summary";
+
+    const doubleRooms = Math.floor(adults / 2);
+    const remaining = adults % 2;
+
+    let summary = [];
+    if (doubleRooms > 0) summary.push(`${doubleRooms} Double Room${doubleRooms > 1 ? 's' : ''}`);
+    if (remaining > 0) summary.push(`1 Single Room`);
+
+    if (summary.length === 0) return "No rooms required";
+    return summary.join(", ");
+  };
+
   return (
     <div className="bg-gray-50 min-h-screen pt-24 pb-12">
       <div className="container mx-auto px-4 max-w-6xl">
@@ -104,10 +193,23 @@ const PassengerForm = () => {
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Tour</p>
                   <p className="font-semibold text-gray-900">{state.tourName}</p>
                 </div>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Departure Date</p>
+                  <p className="font-semibold text-gray-900">{state.departureDate}</p>
+                </div>
 
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Total Passengers</p>
-                  <p className="font-bold text-emerald-600 text-xl">{passengers.length}</p>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Pax Summary</p>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    <span className="text-sm font-medium text-gray-700">{stats.adults} Adults</span>
+                    {stats.children > 0 && <span className="text-sm font-medium text-gray-700">, {stats.children} Child</span>}
+                    {stats.infants > 0 && <span className="text-sm font-medium text-gray-700">, {stats.infants} Infant</span>}
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                  <p className="text-[10px] text-emerald-800 uppercase font-bold mb-1">Room Requirement</p>
+                  <p className="text-sm font-bold text-emerald-900">{getRoomSummary()}</p>
                 </div>
               </div>
 
@@ -129,6 +231,19 @@ const PassengerForm = () => {
                       {i + 1}
                     </span>
                     Passenger {i + 1}
+
+                    {/* Passenger Type Badge */}
+                    {(() => {
+                      const typeInfo = getPassengerType(p.dob);
+                      if (typeInfo) {
+                        return (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ml-2 ${typeInfo.color}`}>
+                            {typeInfo.type}
+                          </span>
+                        );
+                      }
+                    })()}
+
                   </h3>
 
                   {passengers.length > 1 && (
@@ -184,7 +299,7 @@ const PassengerForm = () => {
                 onClick={handleConfirmBooking}
                 disabled={submitting}
                 className={`
-                                w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-1 transition-all
+                                w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-1 transition-all
                                 ${submitting ? 'opacity-70 cursor-wait' : ''}
                             `}
               >

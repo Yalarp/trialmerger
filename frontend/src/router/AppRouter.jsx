@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Home from "../pages/Home";
+import DestinationsPage from "../pages/DestinationsPage";
 import CategoryPage from "../pages/CategoryPage";
 import TourPage from "../pages/tour/TourPage";
 import Overview from "../pages/tour/Overview";
@@ -18,9 +19,9 @@ import LoginPage from "../pages/LoginPage";
 import RegisterPage from "../pages/RegisterPage";
 import ForgotPasswordPage from "../pages/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
-import DestinationsPage from "../pages/DestinationsPage";
 import ProfilePage from "../pages/ProfilePage";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 
 // Admin Imports
 import AdminLayout from '../components/admin/AdminLayout';
@@ -107,6 +108,7 @@ const MainContent = () => {
         </Route>
 
       </Routes>
+      {!isAdmin && <Footer />}
     </>
   );
 };

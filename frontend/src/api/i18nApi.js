@@ -1,11 +1,9 @@
-import axios from "axios";
-
-const BASE_URL = "http://localhost:8080/api/i18n";
+import apiClient from "./client";
 
 export const getSupportedLanguages = () => {
-    return axios.get(`${BASE_URL}/languages`);
+    return apiClient.get('/i18n/languages');
 };
 
 export const getTranslations = (locale) => {
-    return axios.get(`${BASE_URL}/${locale}`);
+    return apiClient.get(`/i18n/${locale}`);
 };

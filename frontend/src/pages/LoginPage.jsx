@@ -23,28 +23,37 @@ const LoginPage = () => {
     const token = params.get('token');
 
     if (token) {
-      // Decode token to get user info (simple decode, not validation)
       try {
         const base64Url = token.split('.')[1];
+        if (!base64Url) throw new Error('Invalid token format');
+
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
+        const jsonPayload = decodeURIComponent(
+          window.atob(base64).split('').map(c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+          ).join('')
+        );
 
         const decoded = JSON.parse(jsonPayload);
 
+        // Validate required fields
+        if (!decoded.userId && !decoded.sub) {
+          throw new Error('Token missing user identifier');
+        }
+
         const authData = {
           token: token,
-          id: decoded.userId || decoded.sub, // Use userId from claim, fallback to sub (likely email) only if missing
+          id: decoded.userId || decoded.sub,
           name: decoded.name || decoded.firstName || "User",
-          email: decoded.sub // 'sub' is the email in our JwtUtils
+          email: decoded.sub,
+          role: decoded.role || 'CUSTOMER'
         };
 
         login(authData);
         navigate('/', { replace: true });
       } catch (e) {
         console.error("Failed to process Google login token", e);
-        setError("Google login failed");
+        setError("Google login failed. Please try again.");
       }
     }
   }, [location, navigate]);
@@ -76,6 +85,10 @@ const LoginPage = () => {
         email: formData.email,
         password: formData.password
       });
+
+      if (!response.role) {
+        response.role = 'CUSTOMER';
+      }
 
       login(response);
 

@@ -17,6 +17,11 @@ apiClient.interceptors.request.use(
         return config;
     },
     (error) => {
+        if (error.response && error.response.status === 401) {
+            // Clear storage and redirect to login if unauthorized
+            localStorage.clear();
+            window.location.href = '/login';
+        }
         return Promise.reject(error);
     }
 );
