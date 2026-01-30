@@ -198,7 +198,7 @@ const Navbar = () => {
 
               <button
                 onClick={() => navigate("/register")}
-                className="px-5 py-2 text-sm font-medium bg-emerald-600 text-white rounded-lg shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 hover:shadow-emerald-500/40 transform hover:-translate-y-0.5 transition-all duration-300"
+                className="px-5 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 transition-all duration-300"
               >
                 Register
               </button>
@@ -206,7 +206,7 @@ const Navbar = () => {
           )}
         </div>
       </div>
-    </nav >
+    </nav>
   );
 };
 

@@ -1,16 +1,56 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { createBooking } from "../../api/bookingApi";
 
 const PassengerForm = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
 
-  // ONLY passengers (no primary/secondary concept)
-  const [passengers, setPassengers] = useState([
-    { name: "", dob: "" }
-  ]);
+  // Initialize with defaults - will load from sessionStorage in useEffect
+  const [passengers, setPassengers] = useState([{ name: "", dob: "", gender: "", type: "" }]);
+  const [roomPreference, setRoomPreference] = useState("AUTO");
   const [submitting, setSubmitting] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+
+
+  // Load saved data from sessionStorage AFTER component mounts
+  // This fixes the timing issue where state isn't available during initial render
+  useEffect(() => {
+
+
+    if (state?.departureDateId) {
+      const saved = sessionStorage.getItem('bookingPassengers');
+
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+
+          // Only use saved data if it's for the same departure
+          if (parsed.departureDateId === state.departureDateId) {
+            setPassengers(parsed.passengers);
+            setRoomPreference(parsed.roomPreference || "AUTO");
+          }
+        } catch (e) {
+          console.error('Failed to parse saved passengers', e);
+        }
+      }
+      setIsLoaded(true);
+    }
+  }, [state?.departureDateId]);
+
+  // Save to sessionStorage whenever passengers or roomPreference changes
+  // Only save after initial load to avoid overwriting with defaults
+  useEffect(() => {
+    if (state?.departureDateId && isLoaded) {
+      const dataToSave = {
+        departureDateId: state.departureDateId,
+        passengers,
+        roomPreference
+      };
+      sessionStorage.setItem('bookingPassengers', JSON.stringify(dataToSave));
+    }
+  }, [passengers, roomPreference, state?.departureDateId, isLoaded]);
 
   // If state is missing (e.g. direct access), redirect back
   if (!state) {
@@ -18,8 +58,48 @@ const PassengerForm = () => {
     return null;
   }
 
+  // Calculate passenger type based on age at departure date
+  const calculatePassengerType = (dob) => {
+    if (!dob || !state.departureDate) return "";
+    const dobDate = new Date(dob);
+    const depDate = new Date(state.departureDate);
+    let age = depDate.getFullYear() - dobDate.getFullYear();
+    const monthDiff = depDate.getMonth() - dobDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && depDate.getDate() < dobDate.getDate())) {
+      age--;
+    }
+    if (age >= 18) return "ADULT";
+    if (age >= 2) return "CHILD_WITH_BED"; // Default child to with bed
+    return "INFANT";
+  };
+
+  // Get age description for display
+  const getAgeDescription = (dob) => {
+    if (!dob || !state.departureDate) return "";
+    const dobDate = new Date(dob);
+    const depDate = new Date(state.departureDate);
+    let age = depDate.getFullYear() - dobDate.getFullYear();
+    const monthDiff = depDate.getMonth() - dobDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && depDate.getDate() < dobDate.getDate())) {
+      age--;
+    }
+    return `${age} years old on departure`;
+  };
+
+  // Passenger summary counts
+  const passengerSummary = useMemo(() => {
+    let adults = 0, children = 0, infants = 0;
+    passengers.forEach(p => {
+      const type = p.type || calculatePassengerType(p.dob);
+      if (type === "ADULT") adults++;
+      else if (type === "INFANT") infants++;
+      else if (type.startsWith("CHILD")) children++;
+    });
+    return { adults, children, infants };
+  }, [passengers, state.departureDate]);
+
   const addPassenger = () => {
-    setPassengers([...passengers, { name: "", dob: "" }]);
+    setPassengers([...passengers, { name: "", dob: "", gender: "", type: "" }]);
   };
 
   const removePassenger = (index) => {
@@ -31,11 +111,23 @@ const PassengerForm = () => {
   const handlePassengerChange = (index, field, value) => {
     const updated = [...passengers];
     updated[index][field] = value;
+
+    // Auto-calculate type when DOB changes (if type not manually set)
+    if (field === "dob" && !updated[index].type) {
+      updated[index].autoType = calculatePassengerType(value);
+    }
+
     setPassengers(updated);
   };
 
+  const handleCancel = () => {
+    // Clear saved data when canceling
+    sessionStorage.removeItem('bookingPassengers');
+    navigate(-1); // Go back to previous page
+  };
+
   const handleConfirmBooking = async () => {
-    // 🚫 Block booking if no passengers
+    // Block booking if no passengers
     if (passengers.length === 0) {
       alert("Please add at least one passenger");
       return;
@@ -45,8 +137,8 @@ const PassengerForm = () => {
     for (let i = 0; i < passengers.length; i++) {
       const p = passengers[i];
 
-      if (!p.name || !p.dob) {
-        alert(`Please fill in all details for Passenger ${i + 1}`);
+      if (!p.name || !p.dob || !p.gender) {
+        alert(`Please fill in all details for Passenger ${i + 1} (Name, Date of Birth, and Gender are required)`);
         return;
       }
 
@@ -71,17 +163,6 @@ const PassengerForm = () => {
       }
     }
 
-    // Validation: At least one adult required
-    const hasAdult = passengers.some(p => {
-      const age = calculateAge(p.dob);
-      return age !== null && age >= 12;
-    });
-
-    if (!hasAdult) {
-      alert("Booking must include at least one Adult (12+ years).");
-      return;
-    }
-
     const customerId = Number(localStorage.getItem("customerId"));
     if (!customerId) {
       alert("Your session has expired or is invalid. Please login again.");
@@ -93,18 +174,25 @@ const PassengerForm = () => {
 
     try {
       const payload = {
-        customerId: customerId, // booking owner
+        customerId: customerId,
         tourId: state.tourId,
         departureDateId: state.departureDateId,
-        roomPreference: "AUTO",
+        roomPreference: roomPreference,
         passengers: passengers.map(p => ({
           passengerName: p.name,
-          dateOfBirth: p.dob
+          dateOfBirth: p.dob,
+          gender: p.gender,
+          passengerType: p.type || calculatePassengerType(p.dob)
         }))
       };
 
+      console.log("DEBUG: Booking payload:", payload);
+
       const res = await createBooking(payload);
       const bookingId = res.data.id;
+
+      // Note: NOT clearing sessionStorage here so user can go back and edit if needed
+      // It will be cleared when they click Cancel or start a fresh booking
 
       navigate(`/booking/${bookingId}/summary`);
     } catch (err) {
@@ -115,60 +203,10 @@ const PassengerForm = () => {
     }
   };
 
-  // Helper: Calculate Age on Departure Date
-  const calculateAge = (dob) => {
-    if (!dob || !state.departureDate) return null;
-    const birthDate = new Date(dob);
-    const travelDate = new Date(state.departureDate);
-
-    let age = travelDate.getFullYear() - birthDate.getFullYear();
-    const m = travelDate.getMonth() - birthDate.getMonth();
-
-    if (m < 0 || (m === 0 && travelDate.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const getPassengerType = (dob) => {
-    const age = calculateAge(dob);
-    if (age === null) return null;
-    if (age >= 12) return { type: 'Adult', color: 'bg-blue-100 text-blue-700' };
-    if (age >= 2) return { type: 'Child', color: 'bg-yellow-100 text-yellow-700' };
-    return { type: 'Infant', color: 'bg-pink-100 text-pink-700' };
-  };
-
-  // Derived Statistics
-  const stats = passengers.reduce((acc, p) => {
-    const age = calculateAge(p.dob);
-    if (age !== null) {
-      if (age >= 12) acc.adults++;
-      else if (age >= 2) acc.children++;
-      else acc.infants++;
-    }
-    return acc;
-  }, { adults: 0, children: 0, infants: 0 });
-
-  // Room Allocation Logic (Simple Heuristic for Display)
-  const getRoomSummary = () => {
-    // RULE: Single Passenger always gets a Single Room (Adult Pricing)
-    if (passengers.length === 1 && passengers[0].name.length > 0) {
-      return "1 Single Room (Single Occupancy)";
-    }
-
-    const { adults } = stats;
-    if (adults === 0 && passengers.length > 1) return "Check age requirements (Min 1 Adult recommended)"; // Odd case: only children?
-    if (adults === 0) return "Add passengers to see room summary";
-
-    const doubleRooms = Math.floor(adults / 2);
-    const remaining = adults % 2;
-
-    let summary = [];
-    if (doubleRooms > 0) summary.push(`${doubleRooms} Double Room${doubleRooms > 1 ? 's' : ''}`);
-    if (remaining > 0) summary.push(`1 Single Room`);
-
-    if (summary.length === 0) return "No rooms required";
-    return summary.join(", ");
+  // Check if passenger is a child (age 2-17)
+  const isChild = (dob) => {
+    const type = calculatePassengerType(dob);
+    return type.startsWith("CHILD");
   };
 
   return (
@@ -193,6 +231,7 @@ const PassengerForm = () => {
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Tour</p>
                   <p className="font-semibold text-gray-900">{state.tourName}</p>
                 </div>
+
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Departure Date</p>
                   <p className="font-semibold text-gray-900">{state.departureDate}</p>
@@ -200,16 +239,65 @@ const PassengerForm = () => {
 
                 <div>
                   <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Pax Summary</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    <span className="text-sm font-medium text-gray-700">{stats.adults} Adults</span>
-                    {stats.children > 0 && <span className="text-sm font-medium text-gray-700">, {stats.children} Child</span>}
-                    {stats.infants > 0 && <span className="text-sm font-medium text-gray-700">, {stats.infants} Infant</span>}
+                  <div className="mt-1 space-y-1">
+                    <p className="text-sm"><span className="font-bold text-emerald-600">{passengerSummary.adults}</span> Adult(s)</p>
+                    <p className="text-sm"><span className="font-bold text-blue-600">{passengerSummary.children}</span> Child(ren)</p>
+                    <p className="text-sm"><span className="font-bold text-purple-600">{passengerSummary.infants}</span> Infant(s)</p>
                   </div>
                 </div>
 
-                <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
-                  <p className="text-[10px] text-emerald-800 uppercase font-bold mb-1">Room Requirement</p>
-                  <p className="text-sm font-bold text-emerald-900">{getRoomSummary()}</p>
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wider font-bold">Total Passengers</p>
+                  <p className="font-bold text-emerald-600 text-xl">{passengers.length}</p>
+                </div>
+              </div>
+
+              {/* Room Preference Section */}
+              <div className="mt-6 pt-4 border-t">
+                <p className="text-xs text-gray-400 uppercase tracking-wider font-bold mb-3">Room Preference</p>
+                <div className="space-y-3">
+                  <label className={`block p-3 rounded-lg border cursor-pointer transition-all ${roomPreference === 'AUTO' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        name="roomPreference"
+                        value="AUTO"
+                        checked={roomPreference === "AUTO"}
+                        onChange={(e) => setRoomPreference(e.target.value)}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="ml-2 text-sm font-medium">Auto (Recommended)</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 ml-5">System optimizes room allocation based on passenger count. Best value for most bookings.</p>
+                  </label>
+                  <label className={`block p-3 rounded-lg border cursor-pointer transition-all ${roomPreference === 'ODD_SINGLE_TWIN' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        name="roomPreference"
+                        value="ODD_SINGLE_TWIN"
+                        checked={roomPreference === "ODD_SINGLE_TWIN"}
+                        onChange={(e) => setRoomPreference(e.target.value)}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="ml-2 text-sm font-medium">Single + Twin Sharing</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 ml-5">For odd passengers: 1 single room + remaining in twin sharing. Single room has extra charge.</p>
+                  </label>
+                  <label className={`block p-3 rounded-lg border cursor-pointer transition-all ${roomPreference === 'ALL_TWIN_RANDOM' ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <div className="flex items-center">
+                      <input
+                        type="radio"
+                        name="roomPreference"
+                        value="ALL_TWIN_RANDOM"
+                        checked={roomPreference === "ALL_TWIN_RANDOM"}
+                        onChange={(e) => setRoomPreference(e.target.value)}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="ml-2 text-sm font-medium">All Twin Sharing</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 ml-5">All passengers in twin sharing rooms. Odd passenger paired randomly with another guest.</p>
+                  </label>
                 </div>
               </div>
 
@@ -231,19 +319,14 @@ const PassengerForm = () => {
                       {i + 1}
                     </span>
                     Passenger {i + 1}
-
-                    {/* Passenger Type Badge */}
-                    {(() => {
-                      const typeInfo = getPassengerType(p.dob);
-                      if (typeInfo) {
-                        return (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ml-2 ${typeInfo.color}`}>
-                            {typeInfo.type}
-                          </span>
-                        );
-                      }
-                    })()}
-
+                    {p.dob && (
+                      <span className={`ml-2 px-2 py-1 text-xs rounded-full ${calculatePassengerType(p.dob) === 'ADULT' ? 'bg-emerald-100 text-emerald-700' :
+                        calculatePassengerType(p.dob) === 'INFANT' ? 'bg-purple-100 text-purple-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                        {calculatePassengerType(p.dob).replace(/_/g, ' ')}
+                      </span>
+                    )}
                   </h3>
 
                   {passengers.length > 1 && (
@@ -261,7 +344,7 @@ const PassengerForm = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
                     <input
                       className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
                       placeholder="e.g. John Doe"
@@ -271,7 +354,7 @@ const PassengerForm = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth *</label>
                     <input
                       type="date"
                       className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
@@ -279,27 +362,67 @@ const PassengerForm = () => {
                       onChange={e => handlePassengerChange(i, "dob", e.target.value)}
                       required
                     />
+                    {p.dob && (
+                      <p className="text-xs text-gray-500 mt-1">{getAgeDescription(p.dob)}</p>
+                    )}
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gender *</label>
+                    <select
+                      className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      value={p.gender}
+                      onChange={e => handlePassengerChange(i, "gender", e.target.value)}
+                      required
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="MALE">Male</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+
+                  {/* Show bed preference only for children (age 2-17) */}
+                  {isChild(p.dob) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Bed Preference</label>
+                      <select
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        value={p.type || "CHILD_WITH_BED"}
+                        onChange={e => handlePassengerChange(i, "type", e.target.value)}
+                      >
+                        <option value="CHILD_WITH_BED">With Bed (Extra charge)</option>
+                        <option value="CHILD_WITHOUT_BED">Without Bed (Reduced charge)</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
 
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4">
-              <button
-                onClick={addPassenger}
-                className="w-full sm:w-auto px-6 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-semibold hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add Another Passenger
-              </button>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button
+                  onClick={handleCancel}
+                  className="px-6 py-3 border border-gray-300 rounded-xl text-gray-600 font-semibold hover:bg-gray-100 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addPassenger}
+                  className="flex-1 sm:flex-none px-6 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 font-semibold hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add Passenger
+                </button>
+              </div>
 
               <button
                 onClick={handleConfirmBooking}
                 disabled={submitting}
                 className={`
-                                w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-1 transition-all
+                                w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:-translate-y-1 transition-all
                                 ${submitting ? 'opacity-70 cursor-wait' : ''}
                             `}
               >
